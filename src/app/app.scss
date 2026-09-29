@@ -70,8 +70,15 @@ button:disabled,
   align-items: center;
   color: #738096;
   display: flex;
+  flex-shrink: 0;
   font-size: 0.76rem;
   gap: 7px;
+  white-space: nowrap;
+}
+.auth-user {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .google-button,
 .auth-button {
@@ -623,7 +630,7 @@ footer {
     overflow-x: auto;
   }
   .topbar__right {
-    display: none;
+    display: flex;
   }
 }
 @media (max-width: 560px) {
@@ -632,6 +639,18 @@ footer {
   }
   .topbar {
     height: 66px;
+    gap: 8px;
+  }
+  .topbar__right {
+    gap: 5px;
+  }
+  .auth-user {
+    display: none;
+  }
+  .google-button,
+  .auth-button {
+    font-size: 0.7rem;
+    padding: 7px 8px;
   }
   .hero h1 {
     font-size: 2.55rem;
@@ -692,5 +711,25 @@ footer {
   }
   .scanner-modal {
     padding: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .app-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .brand {
+    font-size: 0.88rem;
+    gap: 6px;
+  }
+  .brand-mark {
+    border-radius: 7px;
+    height: 27px;
+    width: 27px;
+  }
+  .google-button,
+  .auth-button {
+    gap: 4px;
+    padding: 7px;
   }
 }

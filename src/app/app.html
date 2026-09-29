@@ -7,7 +7,7 @@
       @if (authLoading()) {
         <span>ログイン状態を確認中…</span>
       } @else if (user()) {
-        <span class="sync-dot"></span><span>{{ userLabel() }}</span>
+        <span class="sync-dot"></span><span class="auth-user">{{ userLabel() }}</span>
         <button class="auth-button" type="button" (click)="signOut()">ログアウト</button>
       } @else {
         <button class="google-button" type="button" (click)="signIn()" [disabled]="isSigningIn()">
