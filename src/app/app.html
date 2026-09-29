@@ -162,12 +162,26 @@
           <p class="hero__copy">バーコードから商品を登録・削除。家族で共有するシンプルな在庫台帳です。</p>
         </div>
         <div class="hero__actions">
-          <button class="primary-button primary-button--large" type="button" (click)="openScanner('register')" [disabled]="isRegistering()">
-            <span class="button-icon">▣</span>商品を登録
-          </button>
-          <button class="danger-button" type="button" (click)="openScanner('delete')" [disabled]="isRegistering()">
-            <span class="button-icon">×</span>商品を削除
-          </button>
+          <div class="hero__operation-actions">
+            <button class="primary-button primary-button--large" [class.is-selected]="selectedBarcodeAction() === 'register'" type="button" (click)="selectBarcodeAction('register')" [disabled]="isRegistering()">
+              <span class="button-icon">▣</span>商品を登録
+            </button>
+            <button class="danger-button" [class.is-selected]="selectedBarcodeAction() === 'delete'" type="button" (click)="selectBarcodeAction('delete')" [disabled]="isRegistering()">
+              <span class="button-icon">×</span>商品を削除
+            </button>
+          </div>
+
+          @if (selectedBarcodeAction(); as action) {
+            <div class="barcode-action" [class.barcode-action--delete]="action === 'delete'">
+              <div>
+                <small>次のステップ</small>
+                <strong>バーコードで{{ action === 'delete' ? '削除' : '登録' }}</strong>
+              </div>
+              <button [class]="action === 'delete' ? 'danger-button barcode-action__button' : 'primary-button barcode-action__button'" type="button" (click)="openScannerForSelectedAction()" [disabled]="isRegistering()">
+                <span class="button-icon">▣</span>カメラを開く
+              </button>
+            </div>
+          }
         </div>
       </section>
 

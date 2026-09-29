@@ -175,7 +175,57 @@ button:disabled,
 .hero__actions {
   display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
   gap: 10px;
+  width: min(100%, 410px);
+}
+.hero__operation-actions {
+  display: flex;
+  gap: 10px;
+}
+.hero__operation-actions > button {
+  flex: 1;
+}
+.hero__operation-actions .is-selected {
+  box-shadow: 0 0 0 3px rgba(47, 111, 236, 0.16);
+}
+.hero__operation-actions .danger-button.is-selected {
+  border-color: #d66a72;
+  box-shadow: 0 0 0 3px rgba(199, 78, 86, 0.13);
+}
+.barcode-action {
+  align-items: center;
+  background: #eef4ff;
+  border: 1px solid #ccdcff;
+  border-radius: 12px;
+  color: #255fc3;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 11px 10px 14px;
+}
+.barcode-action--delete {
+  background: #fff5f5;
+  border-color: #f1d0d2;
+  color: #b94a53;
+}
+.barcode-action small,
+.barcode-action strong {
+  display: block;
+}
+.barcode-action small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.barcode-action strong {
+  font-size: 0.86rem;
+  margin-top: 2px;
+}
+.barcode-action__button {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 10px 12px;
 }
 .overline {
   color: #4a7bea;
@@ -865,6 +915,9 @@ footer {
     width: 100%;
   }
   .hero__actions {
+    flex-direction: column;
+  }
+  .hero__operation-actions {
     flex-direction: column;
   }
   .danger-button {
