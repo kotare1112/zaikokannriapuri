@@ -162,23 +162,28 @@
           <p class="hero__copy">バーコードから商品を登録・削除。家族で共有するシンプルな在庫台帳です。</p>
         </div>
         <div class="hero__actions">
-          <div class="barcode-tabs" role="tablist" aria-label="バーコード操作を選択">
-            <button class="barcode-tab" [class.barcode-tab--active]="selectedBarcodeAction() === 'register'" type="button" role="tab" [attr.aria-selected]="selectedBarcodeAction() === 'register'" (click)="selectBarcodeAction('register')" [disabled]="isRegistering()">
+          <div class="operation-stack">
+            <button class="primary-button primary-button--large operation-parent" [class.operation-parent--expanded]="expandedAction() === 'register'" type="button" [attr.aria-expanded]="expandedAction() === 'register'" (click)="toggleActionMenu('register')" [disabled]="isRegistering()">
               <span class="button-icon">▣</span>商品を登録
             </button>
-            <button class="barcode-tab barcode-tab--delete" [class.barcode-tab--active]="selectedBarcodeAction() === 'delete'" type="button" role="tab" [attr.aria-selected]="selectedBarcodeAction() === 'delete'" (click)="selectBarcodeAction('delete')" [disabled]="isRegistering()">
-              <span class="button-icon">×</span>商品を削除
-            </button>
+            <div class="action-slide" [class.action-slide--open]="expandedAction() === 'register'">
+              <div class="action-slide__inner">
+                <button class="action-option action-option--camera" type="button" (click)="openScanner('register')"><span>▣</span>バーコードで登録</button>
+                <button class="action-option" type="button" (click)="selectJanEntry('register')"><span>#</span>JANコードで登録</button>
+              </div>
+            </div>
           </div>
 
-          <div class="barcode-tab-panel" [class.barcode-tab-panel--delete]="selectedBarcodeAction() === 'delete'" role="tabpanel">
-            <div>
-              <small>バーコードを読み取る</small>
-              <strong>{{ selectedBarcodeAction() === 'delete' ? '商品を削除します' : '商品を登録します' }}</strong>
-            </div>
-            <button [class]="selectedBarcodeAction() === 'delete' ? 'danger-button barcode-action__button' : 'primary-button barcode-action__button'" type="button" (click)="openScannerForSelectedAction()" [disabled]="isRegistering()">
-              <span class="button-icon">▣</span>カメラを開く
+          <div class="operation-stack operation-stack--delete">
+            <button class="danger-button operation-parent" [class.operation-parent--expanded]="expandedAction() === 'delete'" type="button" [attr.aria-expanded]="expandedAction() === 'delete'" (click)="toggleActionMenu('delete')" [disabled]="isRegistering()">
+              <span class="button-icon">×</span>商品を削除
             </button>
+            <div class="action-slide action-slide--delete" [class.action-slide--open]="expandedAction() === 'delete'">
+              <div class="action-slide__inner">
+                <button class="action-option action-option--camera action-option--delete" type="button" (click)="openScanner('delete')"><span>▣</span>バーコードで削除</button>
+                <button class="action-option action-option--delete" type="button" (click)="selectJanEntry('delete')"><span>#</span>JANコードで削除</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -192,16 +197,21 @@
         </div>
       }
 
-      <section class="scan-bar card">
-        <div class="scan-bar__label">
-          <span class="scan-bar__glyph">|||</span>
-          <div><strong>JAN コードから商品を自動登録</strong><small>Yahoo!ショッピングの商品情報を利用します</small></div>
-        </div>
-        <form class="barcode-form" (ngSubmit)="submitBarcode()">
-          <input name="barcode" [(ngModel)]="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="例: 4900000000000" aria-label="バーコード番号" />
-          <button class="secondary-button" type="submit" [disabled]="isRegistering()">登録</button>
-        </form>
-      </section>
+      @if (janEntryMode(); as mode) {
+        <section class="scan-bar card" [class.scan-bar--delete]="mode === 'delete'">
+          <div class="scan-bar__label">
+            <span class="scan-bar__glyph">|||</span>
+            <div>
+              <strong>JAN コードで商品を{{ mode === 'delete' ? '削除' : '登録' }}</strong>
+              <small>{{ mode === 'delete' ? '削除する商品のJANコードを入力してください' : 'Yahoo!ショッピングの商品情報を利用します' }}</small>
+            </div>
+          </div>
+          <form class="barcode-form" (ngSubmit)="submitBarcode()">
+            <input name="barcode" [(ngModel)]="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="例: 4900000000000" aria-label="JANコード番号" />
+            <button [class]="mode === 'delete' ? 'danger-button' : 'secondary-button'" type="submit" [disabled]="isRegistering()">{{ mode === 'delete' ? '削除' : '登録' }}</button>
+          </form>
+        </section>
+      }
 
       <section class="metrics" aria-label="在庫の集計">
         <article class="metric card"><span class="metric__label">登録商品</span><strong>{{ items().length }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span></article>

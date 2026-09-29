@@ -47,7 +47,8 @@ export class App implements OnDestroy {
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
   protected readonly scannerMode = signal<ScannerMode>('register');
-  protected readonly selectedBarcodeAction = signal<ScannerMode>('register');
+  protected readonly expandedAction = signal<ScannerMode | null>(null);
+  protected readonly janEntryMode = signal<ScannerMode | null>(null);
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
   protected readonly isSigningIn = signal(false);
@@ -108,16 +109,24 @@ export class App implements OnDestroy {
     await this.auth.signOut();
   }
 
-  protected selectBarcodeAction(mode: ScannerMode): void {
+  protected toggleActionMenu(mode: ScannerMode): void {
     if (!this.ensureInventoryAccess()) return;
-    this.selectedBarcodeAction.set(mode);
+    this.expandedAction.update((current) => (current === mode ? null : mode));
+    this.janEntryMode.set(null);
   }
 
-  protected openScannerForSelectedAction(): void {
-    const mode = this.selectedBarcodeAction();
+  protected openScanner(mode: ScannerMode): void {
     if (!this.ensureInventoryAccess()) return;
     this.scannerMode.set(mode);
     this.scannerOpen.set(true);
+    this.expandedAction.set(null);
+  }
+
+  protected selectJanEntry(mode: ScannerMode): void {
+    if (!this.ensureInventoryAccess()) return;
+    this.janEntryMode.set(mode);
+    this.expandedAction.set(null);
+    this.barcodeInput = '';
   }
 
   protected closeScanner(): void {
@@ -134,6 +143,10 @@ export class App implements OnDestroy {
   }
 
   protected async submitBarcode(): Promise<void> {
+    if (this.janEntryMode() === 'delete') {
+      await this.deleteFromBarcode(this.barcodeInput);
+      return;
+    }
     await this.registerFromBarcode(this.barcodeInput);
   }
 
@@ -320,7 +333,8 @@ export class App implements OnDestroy {
     this.activePage.set('inventory');
     this.accessStatus.set('loading');
     this.scannerOpen.set(false);
-    this.selectedBarcodeAction.set('register');
+    this.expandedAction.set(null);
+    this.janEntryMode.set(null);
     this.isLoading.set(false);
   }
 
@@ -374,6 +388,7 @@ export class App implements OnDestroy {
     this.isRegistering.set(true);
     try {
       await this.inventory.deleteProduct(barcode);
+      this.barcodeInput = '';
       this.showNotice('success', `JAN ${barcode} の商品を削除しました。`);
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));

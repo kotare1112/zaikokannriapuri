@@ -179,71 +179,86 @@ button:disabled,
   gap: 10px;
   width: min(100%, 410px);
 }
-.barcode-tabs {
-  background: #eef2f8;
-  border-radius: 11px;
-  display: flex;
-  gap: 10px;
-  padding: 5px;
+.operation-stack {
+  overflow: hidden;
 }
-.barcode-tab {
+.operation-parent {
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+.operation-parent--expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.action-slide {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+  transition: grid-template-rows 220ms ease, opacity 180ms ease, visibility 0s linear 220ms;
+  visibility: hidden;
+}
+.action-slide--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
+  transition: grid-template-rows 220ms ease, opacity 180ms ease;
+  visibility: visible;
+}
+.action-slide__inner {
+  background: #edf4ff;
+  display: flex;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px;
+}
+.action-slide--delete .action-slide__inner {
+  background: #fff4f4;
+}
+.action-option {
   align-items: center;
-  background: transparent;
-  border: 0;
+  background: white;
+  border: 1px solid #ccdcff;
   border-radius: 8px;
-  color: #64718a;
+  color: #3169d4;
   cursor: pointer;
   display: inline-flex;
   flex: 1;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.75rem;
   font-weight: 750;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
-  min-height: 48px;
-  padding: 10px 12px;
+  min-height: 40px;
+  padding: 8px 10px;
 }
-.barcode-tab--active {
-  background: white;
-  box-shadow: 0 2px 7px rgba(23, 39, 71, 0.12);
-  color: #2866e5;
+.action-option:hover {
+  background: #f7faff;
+  border-color: #8aabef;
 }
-.barcode-tab--delete.barcode-tab--active {
+.action-option--camera {
+  background: #3974e9;
+  border-color: #3974e9;
+  color: white;
+}
+.action-option--camera:hover {
+  background: #2865dc;
+  border-color: #2865dc;
+}
+.action-option--delete {
+  border-color: #f0cdd0;
   color: #bd4e57;
 }
-.barcode-tab-panel {
-  align-items: center;
-  background: #eef4ff;
-  border: 1px solid #ccdcff;
-  border-radius: 12px;
-  color: #255fc3;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 10px 11px 10px 14px;
+.action-option--delete.action-option--camera {
+  background: #c85a63;
+  border-color: #c85a63;
+  color: white;
 }
-.barcode-tab-panel--delete {
-  background: #fff5f5;
-  border-color: #f1d0d2;
-  color: #b94a53;
-}
-.barcode-tab-panel small,
-.barcode-tab-panel strong {
-  display: block;
-}
-.barcode-tab-panel small {
-  font-size: 0.68rem;
-  font-weight: 700;
-  opacity: 0.75;
-}
-.barcode-tab-panel strong {
-  font-size: 0.86rem;
-  margin-top: 2px;
-}
-.barcode-action__button {
-  flex: 0 0 auto;
-  min-width: 0;
-  padding: 10px 12px;
+.action-option--delete.action-option--camera:hover {
+  background: #b74751;
+  border-color: #b74751;
 }
 .overline {
   color: #4a7bea;
@@ -935,11 +950,10 @@ footer {
   .hero__actions {
     flex-direction: column;
   }
-  .barcode-tab-panel {
-    align-items: stretch;
+  .action-slide__inner {
     flex-direction: column;
   }
-  .barcode-tab-panel .barcode-action__button {
+  .action-option {
     width: 100%;
   }
   .danger-button {
