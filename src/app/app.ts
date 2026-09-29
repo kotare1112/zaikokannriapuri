@@ -38,6 +38,7 @@ export class App implements OnInit, OnDestroy {
 
   protected readonly user = this.auth.user;
   protected readonly authLoading = this.auth.loading;
+  protected readonly signInError = this.auth.signInError;
   protected readonly accessStatus = signal<AccessStatus | 'loading' | 'error'>('loading');
   protected readonly activePage = signal<Page>('inventory');
   protected readonly pendingRequests = signal<AccessRequest[]>([]);

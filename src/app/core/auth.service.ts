@@ -5,7 +5,9 @@ import {
   GoogleAuthProvider,
   User,
   getAuth,
+  getRedirectResult,
   onAuthStateChanged,
+  signInWithRedirect,
   signInWithPopup,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
@@ -18,6 +20,7 @@ export class AuthService {
 
   readonly user = signal<User | null>(null);
   readonly loading = signal(true);
+  readonly signInError = signal<string | null>(null);
 
   constructor() {
     if (!this.hasFirebaseConfiguration()) {
@@ -46,6 +49,10 @@ export class AuthService {
         finishInitialState(user);
       });
     });
+
+    void getRedirectResult(this.auth).catch((error: unknown) => {
+      this.signInError.set(this.errorMessage(error));
+    });
   }
 
   async waitUntilReady(): Promise<User | null> {
@@ -65,13 +72,19 @@ export class AuthService {
     return onAuthStateChanged(this.auth, next);
   }
 
-  async signInWithGoogle(): Promise<User> {
+  async signInWithGoogle(): Promise<User | null> {
     if (!this.auth) {
       throw new Error('Firebase の設定が完了していません。');
     }
 
+    this.signInError.set(null);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+
+    if (this.shouldUseRedirect()) {
+      return signInWithRedirect(this.auth, provider);
+    }
+
     const result = await signInWithPopup(this.auth, provider);
     this.user.set(result.user);
     return result.user;
@@ -86,5 +99,16 @@ export class AuthService {
   private hasFirebaseConfiguration(): boolean {
     const { apiKey, appId, projectId } = environment.firebase;
     return Boolean(apiKey && appId && projectId);
+  }
+
+  private shouldUseRedirect(): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error
+      ? error.message
+      : 'Google ログインを完了できませんでした。もう一度お試しください。';
   }
 }

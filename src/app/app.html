@@ -19,6 +19,9 @@
           <span>{{ message.kind === 'error' ? '!' : 'i' }}</span>{{ message.text }}
         </div>
       }
+      @if (signInError(); as message) {
+        <div class="notice login-card__notice notice--error" role="status"><span>!</span>{{ message }}</div>
+      }
     </section>
   </main>
 } @else if (accessStatus() === 'loading') {
