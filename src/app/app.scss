@@ -426,17 +426,6 @@ button:disabled,
   background: #e5faf1;
   color: #31a978;
 }
-.metric__icon--gold {
-  background: #fff7df;
-  color: #ce9b27;
-}
-.metric__icon--red {
-  background: #fff0ee;
-  color: #e47568;
-}
-.metric--attention {
-  border-color: #f2ddd7;
-}
 .workspace__heading {
   align-items: flex-end;
   display: flex;
@@ -487,7 +476,7 @@ button:disabled,
   align-items: center;
   display: grid;
   grid-template-columns:
-    minmax(280px, 2.3fr) minmax(120px, 0.9fr) minmax(85px, 0.7fr) minmax(125px, 0.8fr)
+    minmax(280px, 2.3fr) minmax(120px, 0.9fr) minmax(125px, 0.8fr)
     minmax(125px, 0.8fr);
 }
 .inventory-table__head {
@@ -645,8 +634,8 @@ button:disabled,
 .manual__form {
   display: grid;
   gap: 8px;
-  grid-template-columns: 150px minmax(180px, 1fr) 110px auto;
-  min-width: 620px;
+  grid-template-columns: 150px minmax(180px, 1fr) auto;
+  min-width: 500px;
 }
 .manual__form input {
   border: 1px solid #dce3ed;
@@ -833,7 +822,7 @@ footer {
     min-width: 0;
   }
   .inventory-table {
-    min-width: 820px;
+    min-width: 700px;
   }
   .table-card {
     overflow-x: auto;

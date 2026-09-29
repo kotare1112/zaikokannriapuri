@@ -2,7 +2,6 @@ export interface InventoryItem {
   barcode: string;
   name: string;
   quantity: number;
-  unitPrice: number | null;
   imageUrl: string;
   productUrl: string;
   source: 'yahoo-shopping' | 'manual';
@@ -15,7 +14,6 @@ export interface InventoryItem {
 export interface CatalogProduct {
   barcode: string;
   name: string;
-  unitPrice: number | null;
   imageUrl: string;
   productUrl: string;
   brand: string;

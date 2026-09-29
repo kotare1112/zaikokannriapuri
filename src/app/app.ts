@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { User } from 'firebase/auth';
@@ -19,7 +19,7 @@ type Page = 'inventory' | 'admin';
 type ScannerMode = 'register' | 'delete';
 
 @Component({
-  imports: [CommonModule, FormsModule, CurrencyPipe, DatePipe, BarcodeScannerComponent],
+  imports: [CommonModule, FormsModule, DatePipe, BarcodeScannerComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -53,7 +53,6 @@ export class App implements OnInit, OnDestroy {
   protected barcodeInput = '';
   protected manualBarcode = '';
   protected manualName = '';
-  protected manualPrice: number | null = null;
 
   protected readonly filteredItems = computed(() => {
     const keyword = this.search.trim().toLowerCase();
@@ -68,10 +67,6 @@ export class App implements OnInit, OnDestroy {
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
-  protected readonly lowStockCount = computed(
-    () => this.items().filter((item) => item.quantity <= 3).length,
-  );
-
   ngOnInit(): void {
     void this.initializeSession();
   }
@@ -146,18 +141,13 @@ export class App implements OnInit, OnDestroy {
 
     this.isRegistering.set(true);
     try {
-      const isNew = await this.inventory.registerManualProduct(
-        barcode,
-        this.manualName.trim(),
-        this.manualPrice === null ? null : Number(this.manualPrice),
-      );
+      const isNew = await this.inventory.registerManualProduct(barcode, this.manualName.trim());
       if (!isNew) {
         this.showNotice('info', 'すでにその商品は登録されています。');
         return;
       }
       this.manualBarcode = '';
       this.manualName = '';
-      this.manualPrice = null;
       this.showNotice('success', '手入力の商品を登録しました。');
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));

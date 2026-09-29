@@ -180,7 +180,6 @@
       <section class="metrics" aria-label="在庫の集計">
         <article class="metric card"><span class="metric__label">登録商品</span><strong>{{ items().length }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span></article>
         <article class="metric card"><span class="metric__label">総在庫数</span><strong>{{ totalQuantity() }}</strong><span class="metric__unit">点</span><span class="metric__icon metric__icon--green">◫</span></article>
-        <article class="metric card metric--attention"><span class="metric__label">要確認</span><strong>{{ lowStockCount() }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--red">!</span></article>
       </section>
 
       <section class="workspace">
@@ -196,7 +195,7 @@
             <div class="empty-state"><strong>{{ items().length ? '該当する商品がありません' : 'まだ商品が登録されていません' }}</strong><p>{{ items().length ? '検索条件を変えてみてください。' : '商品を登録して始めましょう。' }}</p></div>
           } @else {
             <div class="inventory-table" role="table">
-              <div class="inventory-table__head" role="row"><span>商品</span><span>JAN コード</span><span>単価</span><span>在庫数</span><span>更新日時</span></div>
+              <div class="inventory-table__head" role="row"><span>商品</span><span>JAN コード</span><span>在庫数</span><span>更新日時</span></div>
               @for (item of filteredItems(); track item.barcode) {
                 <div class="inventory-table__row" role="row">
                   <div class="product-cell">
@@ -204,7 +203,6 @@
                     <div><strong>{{ item.name }}</strong><small>{{ item.brand || item.storeName || '手入力で登録' }}</small></div>
                   </div>
                   <span class="barcode">{{ item.barcode }}</span>
-                  <span>{{ item.unitPrice === null ? '—' : (item.unitPrice | currency: 'JPY' : 'symbol-narrow' : '1.0-0') }}</span>
                   <div class="quantity-control">
                     <button type="button" aria-label="在庫を 1 減らす" (click)="changeQuantity(item, -1)">−</button>
                     <strong [class]="stockClass(item.quantity)">{{ item.quantity }}</strong>
@@ -223,7 +221,6 @@
         <form class="manual__form" (ngSubmit)="registerManualProduct()">
           <input name="manualBarcode" [(ngModel)]="manualBarcode" placeholder="バーコード" inputmode="numeric" />
           <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
-          <input name="manualPrice" [(ngModel)]="manualPrice" placeholder="単価 (円)" type="number" min="0" />
           <button class="outline-button" type="submit" [disabled]="isRegistering()">手入力で登録</button>
         </form>
       </section>

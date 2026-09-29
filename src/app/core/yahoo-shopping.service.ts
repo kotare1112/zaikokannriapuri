@@ -10,7 +10,6 @@ interface YahooSearchResponse {
 
 interface YahooHit {
   name?: string;
-  price?: number;
   url?: string;
   image?: { medium?: string; small?: string };
   brand?: { name?: string };
@@ -38,8 +37,7 @@ export class YahooShoppingService {
       map((response) =>
         (response.hits ?? []).map((hit) => ({
           barcode,
-          name: hit.name?.trim() || `JAN ${barcode}`,
-          unitPrice: Number.isFinite(hit.price) ? hit.price! : null,
+          name: this.productNameWithoutPackCount(hit.name, barcode),
           imageUrl: hit.image?.medium ?? hit.image?.small ?? '',
           productUrl: hit.url ?? '',
           brand: hit.brand?.name ?? '',
@@ -47,5 +45,31 @@ export class YahooShoppingService {
         })),
       ),
     );
+  }
+
+  private productNameWithoutPackCount(name: string | undefined, barcode: string): string {
+    if (!name?.trim()) return `JAN ${barcode}`;
+
+    // 商品名の末尾に付く「6本」「24缶入り」「3個セット」などは、
+    // 在庫として数える商品名には含めない。500ml などの容量表記は残す。
+    const packCount = String.raw`(?:約\s*)?\d+\s*(?:本|個|缶|袋|枚|食|箱|パック|セット|ケース)(?:\s*(?:入り?|入|セット|パック|ケース))?`;
+    const trailingPackCount = new RegExp(
+      String.raw`(?:\s|　|[・/／|、,，\-×xX*＊])*[\[\(（【]?\s*${packCount}\s*[\]\)）】]?(?:\s*(?:セット|パック|ケース))?\s*$`,
+      'u',
+    );
+
+    let normalized = name.trim();
+    let beforeRemoval = '';
+    while (normalized !== beforeRemoval) {
+      beforeRemoval = normalized;
+      normalized = normalized.replace(trailingPackCount, '').trim();
+    }
+
+    normalized = normalized
+      .replace(/[\s　]+/gu, ' ')
+      .replace(/[・/／|、,，-]+\s*$/u, '')
+      .trim();
+
+    return normalized || name.trim();
   }
 }

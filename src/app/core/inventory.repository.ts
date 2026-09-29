@@ -63,7 +63,6 @@ export class InventoryRepository {
         barcode: product.barcode,
         name: product.name,
         quantity: 0,
-        unitPrice: product.unitPrice,
         imageUrl: product.imageUrl,
         productUrl: product.productUrl,
         source: 'yahoo-shopping',
@@ -80,7 +79,6 @@ export class InventoryRepository {
   async registerManualProduct(
     barcode: string,
     name: string,
-    unitPrice: number | null,
   ): Promise<boolean> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, barcode);
@@ -93,7 +91,6 @@ export class InventoryRepository {
         barcode,
         name,
         quantity: 0,
-        unitPrice,
         imageUrl: '',
         productUrl: '',
         source: 'manual',
