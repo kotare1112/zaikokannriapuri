@@ -28,6 +28,17 @@
       <p class="login-card__status"><span class="loading-dot"></span> 利用権限を確認しています…</p>
     </section>
   </main>
+} @else if (accessStatus() === 'error') {
+  <main class="login-shell">
+    <section class="login-card card" aria-labelledby="connection-title">
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <p class="overline">CONNECTION CHECK</p>
+      <h1 id="connection-title">接続を確認<br /><em>できませんでした。</em></h1>
+      <p class="login-card__copy">通信状態を確認して、もう一度お試しください。</p>
+      <button class="google-button google-button--login" type="button" (click)="retryAccessCheck()">もう一度試す</button>
+      <button class="auth-button login-card__logout" type="button" (click)="signOut()">ログアウト</button>
+    </section>
+  </main>
 } @else if (accessStatus() === 'pending' || accessStatus() === 'rejected') {
   <main class="login-shell">
     <section class="login-card card" aria-labelledby="request-title">

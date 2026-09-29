@@ -33,10 +33,12 @@ export class App implements OnInit, OnDestroy {
   private stopAccessWatching?: () => void;
   private stopPendingRequests?: () => void;
   private stopApprovedRequests?: () => void;
+  private stopAuthWatching?: () => void;
+  private accessCheckTimeout?: ReturnType<typeof setTimeout>;
 
   protected readonly user = this.auth.user;
   protected readonly authLoading = this.auth.loading;
-  protected readonly accessStatus = signal<AccessStatus | 'loading'>('loading');
+  protected readonly accessStatus = signal<AccessStatus | 'loading' | 'error'>('loading');
   protected readonly activePage = signal<Page>('inventory');
   protected readonly pendingRequests = signal<AccessRequest[]>([]);
   protected readonly approvedRequests = signal<AccessRequest[]>([]);
@@ -68,7 +70,13 @@ export class App implements OnInit, OnDestroy {
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
   ngOnInit(): void {
-    void this.initializeSession();
+    this.stopAuthWatching = this.auth.watchUser((user) => {
+      if (user) {
+        this.beginAccessWatching(user);
+        return;
+      }
+      this.resetSignedOutSession();
+    });
   }
 
   ngOnDestroy(): void {
@@ -76,13 +84,14 @@ export class App implements OnInit, OnDestroy {
     this.stopAccessWatching?.();
     this.stopPendingRequests?.();
     this.stopApprovedRequests?.();
+    this.stopAuthWatching?.();
+    this.clearAccessCheckTimeout();
   }
 
   protected async signIn(): Promise<void> {
     this.isSigningIn.set(true);
     try {
-      const user = await this.auth.signInWithGoogle();
-      this.beginAccessWatching(user);
+      await this.auth.signInWithGoogle();
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));
     } finally {
@@ -99,12 +108,7 @@ export class App implements OnInit, OnDestroy {
     this.stopPendingRequests = undefined;
     this.stopApprovedRequests?.();
     this.stopApprovedRequests = undefined;
-    this.items.set([]);
-    this.pendingRequests.set([]);
-    this.approvedRequests.set([]);
-    this.activePage.set('inventory');
-    this.accessStatus.set('loading');
-    this.scannerOpen.set(false);
+    this.resetSignedOutSession();
     await this.auth.signOut();
   }
 
@@ -225,26 +229,33 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  protected retryAccessCheck(): void {
+    const user = this.user();
+    if (user) this.beginAccessWatching(user);
+  }
+
   protected userLabel(): string {
     const user = this.user();
     return user?.displayName || user?.email || 'ログイン中';
   }
 
-  private async initializeSession(): Promise<void> {
-    const user = await this.auth.waitUntilReady();
-    if (!user) {
-      this.isLoading.set(false);
-      return;
-    }
-    this.beginAccessWatching(user);
-  }
-
   private beginAccessWatching(user: User): void {
     this.stopAccessWatching?.();
+    this.stopWatching?.();
+    this.stopWatching = undefined;
+    this.items.set([]);
+    this.clearAccessCheckTimeout();
     this.accessStatus.set('loading');
+    this.accessCheckTimeout = setTimeout(() => {
+      if (this.accessStatus() !== 'loading') return;
+      this.accessStatus.set('error');
+      this.isLoading.set(false);
+      this.showNotice('error', '接続に時間がかかっています。通信状態を確認して、もう一度お試しください。');
+    }, 15_000);
     this.stopAccessWatching = this.access.watchUserAccess(
       user,
       (status) => {
+        this.clearAccessCheckTimeout();
         this.accessStatus.set(status);
         if (status === 'developer' || status === 'approved') {
           this.startWatchingInventory();
@@ -256,7 +267,8 @@ export class App implements OnInit, OnDestroy {
         this.isLoading.set(false);
       },
       (error) => {
-        this.accessStatus.set('pending');
+        this.clearAccessCheckTimeout();
+        this.accessStatus.set('error');
         this.isLoading.set(false);
         this.showNotice('error', this.errorMessage(error));
       },
@@ -292,6 +304,31 @@ export class App implements OnInit, OnDestroy {
       (requests) => this.approvedRequests.set(requests),
       (error) => this.showNotice('error', this.errorMessage(error)),
     );
+  }
+
+  private resetSignedOutSession(): void {
+    this.clearAccessCheckTimeout();
+    this.stopWatching?.();
+    this.stopWatching = undefined;
+    this.stopAccessWatching?.();
+    this.stopAccessWatching = undefined;
+    this.stopPendingRequests?.();
+    this.stopPendingRequests = undefined;
+    this.stopApprovedRequests?.();
+    this.stopApprovedRequests = undefined;
+    this.items.set([]);
+    this.pendingRequests.set([]);
+    this.approvedRequests.set([]);
+    this.activePage.set('inventory');
+    this.accessStatus.set('loading');
+    this.scannerOpen.set(false);
+    this.isLoading.set(false);
+  }
+
+  private clearAccessCheckTimeout(): void {
+    if (this.accessCheckTimeout === undefined) return;
+    clearTimeout(this.accessCheckTimeout);
+    this.accessCheckTimeout = undefined;
   }
 
   private async registerFromBarcode(rawBarcode: string): Promise<void> {
