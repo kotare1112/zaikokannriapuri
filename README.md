@@ -5,9 +5,9 @@ Angular と Firebase（Cloud Firestore）で作る、バーコード起点の在
 ## 実装済みの機能
 
 - カメラによる JAN / EAN / UPC などのバーコード読取り（カメラを使えない端末では番号入力）
-- Yahoo!ショッピング商品検索 API v3 の `jan_code` による商品情報の自動登録
-- Firestore とのリアルタイム同期、在庫数の増減、在庫僅少の表示
-- CSV の UTF-8（BOM 付き）出力と読み込み
+- Yahoo!ショッピング商品検索 API v3 の `jan_code` による商品情報の自動登録と重複防止
+- バーコード読取りによる登録・削除、Firestore とのリアルタイム同期、在庫数の増減、在庫僅少の表示
+- Google ログイン、家族の利用申請、開発者による承認フロー
 - API に商品がない場合の手入力登録
 
 ## 初期設定
@@ -40,32 +40,17 @@ Yahoo!商品検索 API はブラウザから直接呼び出すと CORS により
 
 `src/environments/environment.ts` の `yahooShopping.proxyUrl` は `/api/yahoo-item-search` のままにしてください。`yahooShopping.appId` は Vercel 構成では不要なので、環境変数の設定後は空欄にして構いません。
 
-### Firestore Security Rules（開発用の最小例）
+### Firestore Security Rules
 
-次のルールは**認証をまだ実装していない開発中だけ**に使用してください。本番運用では Firebase Authentication を追加し、組織の利用者だけに絞り込んでください。
+このリポジトリの `firestore.rules` は、開発者のGoogleアカウントと、開発者が承認した利用者だけに `inventoryItems` の読み書きを許可します。ルール変更時は次で反映します。
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /inventoryItems/{barcode} {
-      allow read, write: if true;
-    }
-  }
-}
-```
-
-## CSV 形式
-
-エクスポートした CSV はそのままインポートできます。利用できる列は以下です。`barcode` と `quantity` を必須とし、`operation` は `set`（在庫数を上書き、既定）、`add`（加算）、`subtract`（減算）です。日本語見出しの `バーコード`、`商品名`、`在庫数`、`単価`、`操作` も受け付けます。
-
-```csv
-barcode,name,quantity,unit_price,operation,brand,store_name,product_url
-4900000000000,サンプル商品,12,980,set,サンプルブランド,サンプルストア,https://example.com/item
+```bash
+firebase deploy --only firestore
 ```
 
 ## 本番運用メモ
 
 - Firebase の Web 設定値はクライアントに含まれる前提です。データの保護は Security Rules と Authentication で行ってください。
+- 開発者アカウントは `src/environments/environment.ts` の `access.developerEmail` と `firestore.rules` の両方で指定します。変更する場合は両方を同じメールアドレスへ更新してください。
 - Yahoo! の Client ID は Vercel の `YAHOO_SHOPPING_APP_ID` として管理します。`.env.local` などの実値ファイルは Git に追加しないでください。
 - `npm run build` で本番ビルドを検証できます。

@@ -1,234 +1,197 @@
-<main id="top" class="app-shell">
-  <header class="topbar">
-    <a class="brand" href="#top" aria-label="Zaiko Flow ホーム">
-      <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
-    </a>
-    <div class="topbar__right">
+@if (!user()) {
+  <main class="login-shell">
+    <section class="login-card card" aria-labelledby="login-title">
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <p class="overline">FAMILY INVENTORY</p>
+      <h1 id="login-title">在庫を、家族で<br /><em>かんたんに。</em></h1>
+      <p class="login-card__copy">
+        Googleアカウントでログインすると利用申請が送信されます。開発者の承認後に在庫管理を始められます。
+      </p>
       @if (authLoading()) {
-        <span>ログイン状態を確認中…</span>
-      } @else if (user()) {
-        <span class="sync-dot"></span><span class="auth-user">{{ userLabel() }}</span>
-        <button class="auth-button" type="button" (click)="signOut()">ログアウト</button>
+        <p class="login-card__status"><span class="loading-dot"></span> ログイン状態を確認しています…</p>
       } @else {
-        <button class="google-button" type="button" (click)="signIn()" [disabled]="isSigningIn()">
+        <button class="google-button google-button--login" type="button" (click)="signIn()" [disabled]="isSigningIn()">
           <span>G</span>{{ isSigningIn() ? 'ログインしています…' : 'Google でログイン' }}
         </button>
       }
-    </div>
-  </header>
-
-  <section class="hero">
-    <div>
-      <p class="overline">INVENTORY CONTROL</p>
-      <h1>迷わない、<em>在庫管理。</em></h1>
-      <p class="hero__copy">
-        バーコードから商品を登録し、在庫は CSV
-        でまとめて更新。小さなチームのためのシンプルな在庫台帳です。
-      </p>
-    </div>
-    <button
-      class="primary-button primary-button--large"
-      type="button"
-      (click)="openScanner()"
-      [disabled]="isRegistering() || !user()"
-    >
-      <span class="button-icon">▣</span>バーコードをスキャン
-    </button>
-  </section>
-
-  @if (notice(); as message) {
-    <div
-      class="notice"
-      [class.notice--error]="message.kind === 'error'"
-      [class.notice--success]="message.kind === 'success'"
-      role="status"
-    >
-      <span>{{ message.kind === 'error' ? '!' : message.kind === 'success' ? '✓' : 'i' }}</span>
-      {{ message.text }}
-      <button type="button" aria-label="メッセージを閉じる" (click)="notice.set(null)">×</button>
-    </div>
-  }
-
-  @if (scannerOpen()) {
-    <div class="scanner-layer" role="dialog" aria-modal="true" aria-label="バーコードスキャナー">
-      <div class="scanner-modal">
-        <app-barcode-scanner (detected)="barcodeDetected($event)" (close)="closeScanner()" />
-      </div>
-    </div>
-  }
-
-  <section class="scan-bar card">
-    <div class="scan-bar__label">
-      <span class="scan-bar__glyph">|||</span>
-      <div>
-        <strong>JAN コードから商品を自動登録</strong
-        ><small>Yahoo!ショッピングの商品情報を利用します</small>
-      </div>
-    </div>
-    <form class="barcode-form" (ngSubmit)="submitBarcode()">
-      <input
-        name="barcode"
-        [(ngModel)]="barcodeInput"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="例: 4900000000000"
-        aria-label="バーコード番号"
-      />
-      <button class="secondary-button" type="submit" [disabled]="isRegistering() || !user()">登録</button>
-    </form>
-  </section>
-
-  <section class="metrics" aria-label="在庫の集計">
-    <article class="metric card">
-      <span class="metric__label">登録商品</span><strong>{{ items().length }}</strong
-      ><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span>
-    </article>
-    <article class="metric card">
-      <span class="metric__label">総在庫数</span><strong>{{ totalQuantity() }}</strong
-      ><span class="metric__unit">点</span><span class="metric__icon metric__icon--green">◫</span>
-    </article>
-    <article class="metric card">
-      <span class="metric__label">在庫金額</span
-      ><strong>{{ totalValue() | currency: 'JPY' : 'symbol-narrow' : '1.0-0' }}</strong
-      ><span class="metric__icon metric__icon--gold">¥</span>
-    </article>
-    <article class="metric card metric--attention">
-      <span class="metric__label">要確認</span><strong>{{ lowStockCount() }}</strong
-      ><span class="metric__unit">品目</span><span class="metric__icon metric__icon--red">!</span>
-    </article>
-  </section>
-
-  <section class="workspace">
-    <div class="workspace__heading">
-      <div>
-        <p class="overline">INVENTORY LIST</p>
-        <h2>現在の在庫</h2>
-      </div>
-      <div class="csv-actions">
-        <label class="upload-button" [class.is-disabled]="isRegistering() || !user()">
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            (change)="importCsv($event)"
-            [disabled]="isRegistering() || !user()"
-          />CSV を読み込む
-        </label>
-        <button
-          class="outline-button"
-          type="button"
-          (click)="exportCsv()"
-          [disabled]="!items().length"
-        >
-          CSV を出力
-        </button>
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <label class="search-field"
-        ><span>⌕</span
-        ><input
-          [(ngModel)]="search"
-          name="search"
-          type="search"
-          placeholder="商品名・JANコード・ブランドで検索"
-      /></label>
-      <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
-    </div>
-
-    <div class="table-card card">
-      @if (isLoading()) {
-        <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
-      } @else if (!filteredItems().length) {
-        <div class="empty-state">
-          <strong>{{
-            items().length ? '該当する商品がありません' : 'まだ商品が登録されていません'
-          }}</strong>
-          <p>
-            {{
-              items().length
-                ? '検索条件を変えてみてください。'
-                : 'バーコードをスキャンするか、CSV を読み込んで始めましょう。'
-            }}
-          </p>
+      @if (notice(); as message) {
+        <div class="notice login-card__notice" [class.notice--error]="message.kind === 'error'" role="status">
+          <span>{{ message.kind === 'error' ? '!' : 'i' }}</span>{{ message.text }}
         </div>
+      }
+    </section>
+  </main>
+} @else if (accessStatus() === 'loading') {
+  <main class="login-shell">
+    <section class="login-card card">
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <p class="login-card__status"><span class="loading-dot"></span> 利用権限を確認しています…</p>
+    </section>
+  </main>
+} @else if (accessStatus() === 'pending' || accessStatus() === 'rejected') {
+  <main class="login-shell">
+    <section class="login-card card" aria-labelledby="request-title">
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      @if (accessStatus() === 'pending') {
+        <p class="overline">ACCESS REQUEST</p>
+        <h1 id="request-title">利用申請を<br /><em>送信しました。</em></h1>
+        <p class="login-card__copy">開発者が承認すると、この画面から在庫管理機能を利用できるようになります。</p>
+        <p class="login-card__status">承認後は、このページを再読み込みしてください。</p>
       } @else {
-        <div class="inventory-table" role="table">
-          <div class="inventory-table__head" role="row">
-            <span>商品</span><span>JAN コード</span><span>単価</span><span>在庫数</span
-            ><span>更新日時</span>
+        <p class="overline">ACCESS REQUEST</p>
+        <h1 id="request-title">利用申請は<br /><em>未承認です。</em></h1>
+        <p class="login-card__copy">利用をご希望の場合は、開発者へ承認を依頼してください。</p>
+      }
+      <button class="auth-button login-card__logout" type="button" (click)="signOut()">ログアウト</button>
+    </section>
+  </main>
+} @else {
+  <main id="top" class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Zaiko Flow ホーム" (click)="openInventory()">
+        <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
+      </a>
+      <div class="topbar__right">
+        @if (isDeveloper()) {
+          <button class="auth-button" type="button" (click)="activePage() === 'admin' ? openInventory() : openAdmin()">
+            {{ activePage() === 'admin' ? '在庫画面' : '管理者画面' }}
+          </button>
+        }
+        <span class="sync-dot"></span><span class="auth-user">{{ userLabel() }}</span>
+        <button class="auth-button" type="button" (click)="signOut()">ログアウト</button>
+      </div>
+    </header>
+
+    @if (notice(); as message) {
+      <div class="notice" [class.notice--error]="message.kind === 'error'" [class.notice--success]="message.kind === 'success'" role="status">
+        <span>{{ message.kind === 'error' ? '!' : message.kind === 'success' ? '✓' : 'i' }}</span>
+        {{ message.text }}
+        <button type="button" aria-label="メッセージを閉じる" (click)="notice.set(null)">×</button>
+      </div>
+    }
+
+    @if (activePage() === 'admin') {
+      <section class="admin-page">
+        <div class="admin-page__heading">
+          <div>
+            <p class="overline">DEVELOPER ONLY</p>
+            <h1>利用申請の管理</h1>
+            <p>承認した家族だけが在庫管理機能を利用できます。</p>
           </div>
-          @for (item of filteredItems(); track item.barcode) {
-            <div class="inventory-table__row" role="row">
-              <div class="product-cell">
-                @if (item.imageUrl) {
-                  <img [src]="item.imageUrl" [alt]="item.name" />
-                } @else {
-                  <span class="product-placeholder">▦</span>
-                }
-                <div>
-                  <strong>{{ item.name }}</strong
-                  ><small>{{ item.brand || item.storeName || '手入力・CSV 登録' }}</small>
+          <span class="request-count">{{ pendingRequests().length }} 件の申請</span>
+        </div>
+        <section class="request-list card" aria-label="利用申請一覧">
+          @if (!pendingRequests().length) {
+            <div class="empty-state"><strong>承認待ちの申請はありません</strong><p>家族がGoogleでログインすると、ここに申請が届きます。</p></div>
+          } @else {
+            @for (request of pendingRequests(); track request.uid) {
+              <article class="request-row">
+                <div class="request-row__avatar">{{ request.displayName.slice(0, 1) || '?' }}</div>
+                <div class="request-row__person">
+                  <strong>{{ request.displayName || '名前未設定' }}</strong>
+                  <span>{{ request.email }}</span>
+                  <small>申請日時: {{ request.requestedAt | date: 'yyyy/MM/dd HH:mm' }}</small>
                 </div>
-              </div>
-              <span class="barcode">{{ item.barcode }}</span>
-              <span>{{
-                item.unitPrice === null
-                  ? '—'
-                  : (item.unitPrice | currency: 'JPY' : 'symbol-narrow' : '1.0-0')
-              }}</span>
-              <div class="quantity-control">
-                <button
-                  type="button"
-                  aria-label="在庫を 1 減らす"
-                  (click)="changeQuantity(item, -1)"
-                  [disabled]="!user()"
-                >
-                  −
-                </button>
-                <strong [class]="stockClass(item.quantity)">{{ item.quantity }}</strong>
-                <button
-                  type="button"
-                  aria-label="在庫を 1 増やす"
-                  (click)="changeQuantity(item, 1)"
-                  [disabled]="!user()"
-                >
-                  ＋
-                </button>
-              </div>
-              <span class="updated">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+                <div class="request-row__actions">
+                  <button class="outline-button" type="button" (click)="reviewRequest(request, 'rejected')" [disabled]="isReviewing() === request.uid">却下</button>
+                  <button class="primary-button" type="button" (click)="reviewRequest(request, 'approved')" [disabled]="isReviewing() === request.uid">
+                    {{ isReviewing() === request.uid ? '処理中…' : '承認する' }}
+                  </button>
+                </div>
+              </article>
+            }
+          }
+        </section>
+      </section>
+    } @else {
+      <section class="hero">
+        <div>
+          <p class="overline">INVENTORY CONTROL</p>
+          <h1>迷わない、<em>在庫管理。</em></h1>
+          <p class="hero__copy">バーコードから商品を登録・削除。家族で共有するシンプルな在庫台帳です。</p>
+        </div>
+        <div class="hero__actions">
+          <button class="primary-button primary-button--large" type="button" (click)="openScanner('register')" [disabled]="isRegistering()">
+            <span class="button-icon">▣</span>商品を登録
+          </button>
+          <button class="danger-button" type="button" (click)="openScanner('delete')" [disabled]="isRegistering()">
+            <span class="button-icon">×</span>商品を削除
+          </button>
+        </div>
+      </section>
+
+      @if (scannerOpen()) {
+        <div class="scanner-layer" role="dialog" aria-modal="true" [attr.aria-label]="scannerMode() === 'delete' ? '商品削除用バーコードスキャナー' : '商品登録用バーコードスキャナー'">
+          <div class="scanner-modal">
+            <p class="scanner-modal__mode">{{ scannerMode() === 'delete' ? '削除する商品のバーコードを読み取ってください' : '登録する商品のバーコードを読み取ってください' }}</p>
+            <app-barcode-scanner (detected)="barcodeDetected($event)" (close)="closeScanner()" />
+          </div>
+        </div>
+      }
+
+      <section class="scan-bar card">
+        <div class="scan-bar__label">
+          <span class="scan-bar__glyph">|||</span>
+          <div><strong>JAN コードから商品を自動登録</strong><small>Yahoo!ショッピングの商品情報を利用します</small></div>
+        </div>
+        <form class="barcode-form" (ngSubmit)="submitBarcode()">
+          <input name="barcode" [(ngModel)]="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="例: 4900000000000" aria-label="バーコード番号" />
+          <button class="secondary-button" type="submit" [disabled]="isRegistering()">登録</button>
+        </form>
+      </section>
+
+      <section class="metrics" aria-label="在庫の集計">
+        <article class="metric card"><span class="metric__label">登録商品</span><strong>{{ items().length }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span></article>
+        <article class="metric card"><span class="metric__label">総在庫数</span><strong>{{ totalQuantity() }}</strong><span class="metric__unit">点</span><span class="metric__icon metric__icon--green">◫</span></article>
+        <article class="metric card"><span class="metric__label">在庫金額</span><strong>{{ totalValue() | currency: 'JPY' : 'symbol-narrow' : '1.0-0' }}</strong><span class="metric__icon metric__icon--gold">¥</span></article>
+        <article class="metric card metric--attention"><span class="metric__label">要確認</span><strong>{{ lowStockCount() }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--red">!</span></article>
+      </section>
+
+      <section class="workspace">
+        <div class="workspace__heading"><div><p class="overline">INVENTORY LIST</p><h2>現在の在庫</h2></div></div>
+        <div class="toolbar">
+          <label class="search-field"><span>⌕</span><input [(ngModel)]="search" name="search" type="search" placeholder="商品名・JANコード・ブランドで検索" /></label>
+          <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
+        </div>
+        <div class="table-card card">
+          @if (isLoading()) {
+            <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
+          } @else if (!filteredItems().length) {
+            <div class="empty-state"><strong>{{ items().length ? '該当する商品がありません' : 'まだ商品が登録されていません' }}</strong><p>{{ items().length ? '検索条件を変えてみてください。' : '商品を登録して始めましょう。' }}</p></div>
+          } @else {
+            <div class="inventory-table" role="table">
+              <div class="inventory-table__head" role="row"><span>商品</span><span>JAN コード</span><span>単価</span><span>在庫数</span><span>更新日時</span></div>
+              @for (item of filteredItems(); track item.barcode) {
+                <div class="inventory-table__row" role="row">
+                  <div class="product-cell">
+                    @if (item.imageUrl) { <img [src]="item.imageUrl" [alt]="item.name" /> } @else { <span class="product-placeholder">▦</span> }
+                    <div><strong>{{ item.name }}</strong><small>{{ item.brand || item.storeName || '手入力で登録' }}</small></div>
+                  </div>
+                  <span class="barcode">{{ item.barcode }}</span>
+                  <span>{{ item.unitPrice === null ? '—' : (item.unitPrice | currency: 'JPY' : 'symbol-narrow' : '1.0-0') }}</span>
+                  <div class="quantity-control">
+                    <button type="button" aria-label="在庫を 1 減らす" (click)="changeQuantity(item, -1)">−</button>
+                    <strong [class]="stockClass(item.quantity)">{{ item.quantity }}</strong>
+                    <button type="button" aria-label="在庫を 1 増やす" (click)="changeQuantity(item, 1)">＋</button>
+                  </div>
+                  <span class="updated">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+                </div>
+              }
             </div>
           }
         </div>
-      }
-    </div>
-  </section>
+      </section>
 
-  <section class="manual card">
-    <div class="manual__intro">
-      <p class="overline">FALLBACK</p>
-      <h2>商品情報が見つからない場合</h2>
-      <p>Yahoo!ショッピングに掲載されていない商品も、手入力で在庫台帳へ追加できます。</p>
-    </div>
-    <form class="manual__form" (ngSubmit)="registerManualProduct()">
-      <input
-        name="manualBarcode"
-        [(ngModel)]="manualBarcode"
-        placeholder="バーコード"
-        inputmode="numeric"
-      />
-      <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
-      <input
-        name="manualPrice"
-        [(ngModel)]="manualPrice"
-        placeholder="単価 (円)"
-        type="number"
-        min="0"
-      />
-      <button class="outline-button" type="submit" [disabled]="isRegistering() || !user()">
-        手入力で登録
-      </button>
-    </form>
-  </section>
-  <footer>ZAiKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
-</main>
+      <section class="manual card">
+        <div class="manual__intro"><p class="overline">FALLBACK</p><h2>商品情報が見つからない場合</h2><p>Yahoo!ショッピングに掲載されていない商品も、手入力で在庫台帳へ追加できます。</p></div>
+        <form class="manual__form" (ngSubmit)="registerManualProduct()">
+          <input name="manualBarcode" [(ngModel)]="manualBarcode" placeholder="バーコード" inputmode="numeric" />
+          <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
+          <input name="manualPrice" [(ngModel)]="manualPrice" placeholder="単価 (円)" type="number" min="0" />
+          <button class="outline-button" type="submit" [disabled]="isRegistering()">手入力で登録</button>
+        </form>
+      </section>
+    }
+    <footer>ZAiKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
+  </main>
+}

@@ -5,7 +5,7 @@ export interface InventoryItem {
   unitPrice: number | null;
   imageUrl: string;
   productUrl: string;
-  source: 'yahoo-shopping' | 'manual' | 'csv';
+  source: 'yahoo-shopping' | 'manual';
   brand: string;
   storeName: string;
   createdAt: string;
@@ -20,17 +20,4 @@ export interface CatalogProduct {
   productUrl: string;
   brand: string;
   storeName: string;
-}
-
-export type CsvOperation = 'set' | 'add' | 'subtract';
-
-export interface CsvInventoryRow {
-  barcode: string;
-  name: string;
-  quantity: number;
-  unitPrice: number | null;
-  operation: CsvOperation;
-  brand: string;
-  storeName: string;
-  productUrl: string;
 }

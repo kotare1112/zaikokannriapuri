@@ -20,4 +20,7 @@ export const environment = {
     // Vercel 上では同じデプロイメントのサーバーレス関数を呼び出します。
     proxyUrl: '/api/yahoo-item-search',
   },
+  access: {
+    developerEmail: 'kotare1112@gmail.com',
+  },
 };

@@ -2,17 +2,44 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only the project owner's verified Google account can access inventory.
-    function isInventoryManager() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isDeveloper() {
+      return isSignedIn()
         && request.auth.token.email == 'kotare1112@gmail.com';
     }
 
+    function hasApprovedAccess() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/accessRequests/$(request.auth.uid))
+        && get(/databases/$(database)/documents/accessRequests/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    function canUseInventory() {
+      return isDeveloper() || hasApprovedAccess();
+    }
+
+    match /accessRequests/{uid} {
+      allow get: if isDeveloper() || (isSignedIn() && request.auth.uid == uid);
+      allow list: if isDeveloper();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'status', 'requestedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isDeveloper();
+    }
+
     match /inventoryItems/{barcode} {
-      allow read: if isInventoryManager();
-      allow create, update: if isInventoryManager()
+      allow read: if canUseInventory();
+      allow create, update: if canUseInventory()
         && request.resource.data.barcode == barcode;
+      allow delete: if canUseInventory();
     }
   }
 }

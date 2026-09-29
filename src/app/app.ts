@@ -1,8 +1,13 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { User } from 'firebase/auth';
 import { firstValueFrom } from 'rxjs';
-import { CsvInventoryService } from './core/csv-inventory.service';
+import {
+  AccessControlService,
+  AccessRequest,
+  AccessStatus,
+} from './core/access-control.service';
 import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
@@ -10,6 +15,8 @@ import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scan
 import { InventoryItem } from './models/inventory-item';
 
 type Notice = { kind: 'success' | 'error' | 'info'; text: string };
+type Page = 'inventory' | 'admin';
+type ScannerMode = 'register' | 'delete';
 
 @Component({
   imports: [CommonModule, FormsModule, CurrencyPipe, DatePipe, BarcodeScannerComponent],
@@ -18,17 +25,24 @@ type Notice = { kind: 'success' | 'error' | 'info'; text: string };
   templateUrl: './app.html',
 })
 export class App implements OnInit, OnDestroy {
-  private readonly inventory = inject(InventoryRepository);
+  private readonly access = inject(AccessControlService);
   private readonly auth = inject(AuthService);
+  private readonly inventory = inject(InventoryRepository);
   private readonly yahooShopping = inject(YahooShoppingService);
-  private readonly csv = inject(CsvInventoryService);
   private stopWatching?: () => void;
+  private stopAccessWatching?: () => void;
+  private stopPendingRequests?: () => void;
 
-  protected readonly items = signal<InventoryItem[]>([]);
   protected readonly user = this.auth.user;
   protected readonly authLoading = this.auth.loading;
+  protected readonly accessStatus = signal<AccessStatus | 'loading'>('loading');
+  protected readonly activePage = signal<Page>('inventory');
+  protected readonly pendingRequests = signal<AccessRequest[]>([]);
+  protected readonly isReviewing = signal<string | null>(null);
+  protected readonly items = signal<InventoryItem[]>([]);
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
+  protected readonly scannerMode = signal<ScannerMode>('register');
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
   protected readonly isSigningIn = signal(false);
@@ -48,7 +62,6 @@ export class App implements OnInit, OnDestroy {
         .includes(keyword),
     );
   });
-
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
@@ -60,26 +73,20 @@ export class App implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    void this.initializeInventory();
+    void this.initializeSession();
   }
 
-  private async initializeInventory(): Promise<void> {
-    const user = await this.auth.waitUntilReady();
-    if (!user) {
-      this.isLoading.set(false);
-      this.showNotice('info', '在庫を表示・操作するには Google でログインしてください。');
-      return;
-    }
-
-    this.startWatchingInventory();
+  ngOnDestroy(): void {
+    this.stopWatching?.();
+    this.stopAccessWatching?.();
+    this.stopPendingRequests?.();
   }
 
   protected async signIn(): Promise<void> {
     this.isSigningIn.set(true);
     try {
-      await this.auth.signInWithGoogle();
-      this.startWatchingInventory();
-      this.showNotice('success', 'Google アカウントでログインしました。');
+      const user = await this.auth.signInWithGoogle();
+      this.beginAccessWatching(user);
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));
     } finally {
@@ -90,39 +97,21 @@ export class App implements OnInit, OnDestroy {
   protected async signOut(): Promise<void> {
     this.stopWatching?.();
     this.stopWatching = undefined;
+    this.stopAccessWatching?.();
+    this.stopAccessWatching = undefined;
+    this.stopPendingRequests?.();
+    this.stopPendingRequests = undefined;
     this.items.set([]);
+    this.pendingRequests.set([]);
+    this.activePage.set('inventory');
+    this.accessStatus.set('loading');
     this.scannerOpen.set(false);
     await this.auth.signOut();
-    this.isLoading.set(false);
-    this.showNotice('info', 'ログアウトしました。');
   }
 
-  protected userLabel(): string {
-    const user = this.user();
-    return user?.displayName || user?.email || 'ログイン中';
-  }
-
-  private startWatchingInventory(): void {
-    this.stopWatching?.();
-    this.isLoading.set(true);
-    this.stopWatching = this.inventory.watch(
-      (items) => {
-        this.items.set(items);
-        this.isLoading.set(false);
-      },
-      (error) => {
-        this.isLoading.set(false);
-        this.showNotice('error', error.message);
-      },
-    );
-  }
-
-  ngOnDestroy(): void {
-    this.stopWatching?.();
-  }
-
-  protected openScanner(): void {
-    if (!this.ensureFirebase()) return;
+  protected openScanner(mode: ScannerMode): void {
+    if (!this.ensureInventoryAccess()) return;
+    this.scannerMode.set(mode);
     this.scannerOpen.set(true);
   }
 
@@ -132,6 +121,10 @@ export class App implements OnInit, OnDestroy {
 
   protected async barcodeDetected(barcode: string): Promise<void> {
     this.scannerOpen.set(false);
+    if (this.scannerMode() === 'delete') {
+      await this.deleteFromBarcode(barcode);
+      return;
+    }
     await this.registerFromBarcode(barcode);
   }
 
@@ -145,15 +138,19 @@ export class App implements OnInit, OnDestroy {
       this.showNotice('error', 'バーコードと商品名を入力してください。');
       return;
     }
-    if (!this.ensureFirebase()) return;
+    if (!this.ensureInventoryAccess()) return;
 
     this.isRegistering.set(true);
     try {
-      await this.inventory.registerManualProduct(
+      const isNew = await this.inventory.registerManualProduct(
         barcode,
         this.manualName.trim(),
         this.manualPrice === null ? null : Number(this.manualPrice),
       );
+      if (!isNew) {
+        this.showNotice('info', 'すでにその商品は登録されています。');
+        return;
+      }
       this.manualBarcode = '';
       this.manualName = '';
       this.manualPrice = null;
@@ -166,36 +163,11 @@ export class App implements OnInit, OnDestroy {
   }
 
   protected async changeQuantity(item: InventoryItem, difference: number): Promise<void> {
-    if (!this.ensureFirebase()) return;
+    if (!this.ensureInventoryAccess()) return;
     try {
       await this.inventory.changeQuantity(item.barcode, difference);
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));
-    }
-  }
-
-  protected exportCsv(): void {
-    this.csv.download(this.items());
-    this.showNotice('success', `${this.items().length} 件を CSV に書き出しました。`);
-  }
-
-  protected async importCsv(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file || !this.ensureFirebase()) return;
-
-    this.isRegistering.set(true);
-    try {
-      const rows = await this.csv.read(file);
-      for (const row of rows) {
-        await this.inventory.importRow(row);
-      }
-      this.showNotice('success', `${rows.length} 件の CSV データを反映しました。`);
-    } catch (error) {
-      this.showNotice('error', this.errorMessage(error));
-    } finally {
-      input.value = '';
-      this.isRegistering.set(false);
     }
   }
 
@@ -205,13 +177,103 @@ export class App implements OnInit, OnDestroy {
     return 'stock';
   }
 
+  protected isDeveloper(): boolean {
+    return this.accessStatus() === 'developer';
+  }
+
+  protected openAdmin(): void {
+    if (!this.isDeveloper()) return;
+    this.activePage.set('admin');
+    this.watchPendingRequests();
+  }
+
+  protected openInventory(): void {
+    this.activePage.set('inventory');
+  }
+
+  protected async reviewRequest(request: AccessRequest, status: 'approved' | 'rejected'): Promise<void> {
+    const user = this.user();
+    if (!user || !this.isDeveloper()) return;
+
+    this.isReviewing.set(request.uid);
+    try {
+      await this.access.reviewRequest(request, status, user);
+      this.showNotice('success', status === 'approved' ? '利用を承認しました。' : '申請を却下しました。');
+    } catch (error) {
+      this.showNotice('error', this.errorMessage(error));
+    } finally {
+      this.isReviewing.set(null);
+    }
+  }
+
+  protected userLabel(): string {
+    const user = this.user();
+    return user?.displayName || user?.email || 'ログイン中';
+  }
+
+  private async initializeSession(): Promise<void> {
+    const user = await this.auth.waitUntilReady();
+    if (!user) {
+      this.isLoading.set(false);
+      return;
+    }
+    this.beginAccessWatching(user);
+  }
+
+  private beginAccessWatching(user: User): void {
+    this.stopAccessWatching?.();
+    this.accessStatus.set('loading');
+    this.stopAccessWatching = this.access.watchUserAccess(
+      user,
+      (status) => {
+        this.accessStatus.set(status);
+        if (status === 'developer' || status === 'approved') {
+          this.startWatchingInventory();
+          return;
+        }
+        this.stopWatching?.();
+        this.stopWatching = undefined;
+        this.items.set([]);
+        this.isLoading.set(false);
+      },
+      (error) => {
+        this.accessStatus.set('pending');
+        this.isLoading.set(false);
+        this.showNotice('error', this.errorMessage(error));
+      },
+    );
+  }
+
+  private startWatchingInventory(): void {
+    if (this.stopWatching) return;
+    this.isLoading.set(true);
+    this.stopWatching = this.inventory.watch(
+      (items) => {
+        this.items.set(items);
+        this.isLoading.set(false);
+      },
+      (error) => {
+        this.isLoading.set(false);
+        this.showNotice('error', this.errorMessage(error));
+      },
+    );
+  }
+
+  private watchPendingRequests(): void {
+    if (this.stopPendingRequests) return;
+    this.stopPendingRequests = this.access.watchPendingRequests(
+      (requests) => this.pendingRequests.set(requests),
+      (error) => this.showNotice('error', this.errorMessage(error)),
+    );
+  }
+
   private async registerFromBarcode(rawBarcode: string): Promise<void> {
     const barcode = this.cleanBarcode(rawBarcode);
     if (!barcode) {
       this.showNotice('error', '読み取ったバーコードが空です。');
       return;
     }
-    if (!this.ensureFirebase()) return;
+    if (!this.ensureInventoryAccess()) return;
 
     this.isRegistering.set(true);
     this.showNotice('info', `JAN ${barcode} を Yahoo!ショッピングで検索しています…`);
@@ -228,10 +290,8 @@ export class App implements OnInit, OnDestroy {
       const isNew = await this.inventory.registerCatalogProduct(product);
       this.barcodeInput = '';
       this.showNotice(
-        'success',
-        isNew
-          ? `「${product.name}」を在庫 0 で登録しました。`
-          : `「${product.name}」の商品情報を更新しました。`,
+        isNew ? 'success' : 'info',
+        isNew ? `「${product.name}」を在庫 0 で登録しました。` : 'すでにその商品は登録されています。',
       );
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));
@@ -240,9 +300,32 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  private ensureFirebase(): boolean {
+  private async deleteFromBarcode(rawBarcode: string): Promise<void> {
+    const barcode = this.cleanBarcode(rawBarcode);
+    if (!barcode) {
+      this.showNotice('error', '読み取ったバーコードが空です。');
+      return;
+    }
+    if (!this.ensureInventoryAccess()) return;
+
+    this.isRegistering.set(true);
+    try {
+      await this.inventory.deleteProduct(barcode);
+      this.showNotice('success', `JAN ${barcode} の商品を削除しました。`);
+    } catch (error) {
+      this.showNotice('error', this.errorMessage(error));
+    } finally {
+      this.isRegistering.set(false);
+    }
+  }
+
+  private ensureInventoryAccess(): boolean {
     if (!this.auth.isSignedIn()) {
       this.showNotice('info', '先に Google でログインしてください。');
+      return false;
+    }
+    if (this.accessStatus() !== 'developer' && this.accessStatus() !== 'approved') {
+      this.showNotice('info', '管理者の承認後に在庫管理機能を利用できます。');
       return false;
     }
     if (this.inventory.isAvailable()) return true;
@@ -259,6 +342,10 @@ export class App implements OnInit, OnDestroy {
   }
 
   private errorMessage(error: unknown): string {
+    const code = (error as { code?: string }).code;
+    if (code === 'permission-denied') {
+      return 'この操作を行う権限がありません。管理者の承認状況を確認してください。';
+    }
     return error instanceof Error ? error.message : '処理に失敗しました。もう一度お試しください。';
   }
 }
