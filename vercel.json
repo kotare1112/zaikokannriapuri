@@ -3,6 +3,16 @@
   "framework": "angular",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/zaiko-inventory/browser",
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://zaikokannriapuri-d3a2a.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/__/firebase/:path*",
+      "destination": "https://zaikokannriapuri-d3a2a.firebaseapp.com/__/firebase/:path*"
+    }
+  ],
   "functions": {
     "api/yahoo-item-search.ts": {
       "maxDuration": 10,

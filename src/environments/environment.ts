@@ -7,7 +7,9 @@ export const environment = {
   production: false,
   firebase: {
     apiKey: 'AIzaSyBkEUf8egWytmGIF70KBBIyIbY-2KgHDnE',
-    authDomain: 'zaikokannriapuri-d3a2a.firebaseapp.com',
+    // Vercel の同一ドメインで Firebase Auth ヘルパーをプロキシし、
+    // iPhone / iPad のストレージ分離によるリダイレクト認証の失敗を防ぎます。
+    authDomain: 'zaikokannriapuri.vercel.app',
     projectId: 'zaikokannriapuri-d3a2a',
     storageBucket: 'zaikokannriapuri-d3a2a.firebasestorage.app',
     messagingSenderId: '86867562188',
