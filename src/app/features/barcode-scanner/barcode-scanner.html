@@ -1,0 +1,32 @@
+<section class="scanner" aria-label="バーコードスキャン">
+  <div class="scanner__topline">
+    <div>
+      <p class="eyebrow">CAMERA SCAN</p>
+      <h2>バーコードを枠内に合わせてください</h2>
+    </div>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="スキャナーを閉じる"
+      (click)="closeScanner()"
+    >
+      ×
+    </button>
+  </div>
+
+  <div class="preview-wrap">
+    <video #preview class="preview" muted playsinline></video>
+    <div class="scan-frame" aria-hidden="true"></div>
+    @if (state() === 'starting') {
+      <div class="scanner__message">カメラを起動しています…</div>
+    }
+    @if (state() === 'error') {
+      <div class="scanner__message scanner__message--error">{{ error() }}</div>
+    }
+  </div>
+
+  <p class="scanner__help">
+    JAN（EAN-13 / EAN-8）、UPC
+    などを読み取れます。カメラが使えない場合は下の手入力をご利用ください。
+  </p>
+</section>

@@ -1,0 +1,77 @@
+:host {
+  display: block;
+}
+.scanner {
+  color: #f7f9fc;
+}
+.scanner__topline {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.scanner h2 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  margin: 4px 0 0;
+}
+.eyebrow {
+  color: #8bb5ff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0;
+}
+.icon-button {
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  font-size: 1.75rem;
+  height: 38px;
+  line-height: 1;
+  width: 38px;
+}
+.preview-wrap {
+  aspect-ratio: 4 / 3;
+  background: #070c16;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.preview {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+.scan-frame {
+  border: 3px solid #6ce2ba;
+  border-radius: 13px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.24);
+  height: 34%;
+  left: 12%;
+  position: absolute;
+  top: 33%;
+  width: 76%;
+}
+.scanner__message {
+  background: rgba(7, 12, 22, 0.78);
+  bottom: 0;
+  left: 0;
+  padding: 14px 16px;
+  position: absolute;
+  right: 0;
+  text-align: center;
+}
+.scanner__message--error {
+  color: #ffb9bb;
+  font-size: 0.86rem;
+}
+.scanner__help {
+  color: #a9b4c8;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}

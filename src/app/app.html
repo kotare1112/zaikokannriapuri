@@ -1,0 +1,221 @@
+<main id="top" class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Zaiko Flow ホーム">
+      <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
+    </a>
+    <div class="topbar__right"><span class="sync-dot"></span><span>Firestore と同期中</span></div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="overline">INVENTORY CONTROL</p>
+      <h1>迷わない、<em>在庫管理。</em></h1>
+      <p class="hero__copy">
+        バーコードから商品を登録し、在庫は CSV
+        でまとめて更新。小さなチームのためのシンプルな在庫台帳です。
+      </p>
+    </div>
+    <button
+      class="primary-button primary-button--large"
+      type="button"
+      (click)="openScanner()"
+      [disabled]="isRegistering()"
+    >
+      <span class="button-icon">▣</span>バーコードをスキャン
+    </button>
+  </section>
+
+  @if (notice(); as message) {
+    <div
+      class="notice"
+      [class.notice--error]="message.kind === 'error'"
+      [class.notice--success]="message.kind === 'success'"
+      role="status"
+    >
+      <span>{{ message.kind === 'error' ? '!' : message.kind === 'success' ? '✓' : 'i' }}</span>
+      {{ message.text }}
+      <button type="button" aria-label="メッセージを閉じる" (click)="notice.set(null)">×</button>
+    </div>
+  }
+
+  @if (scannerOpen()) {
+    <div class="scanner-layer" role="dialog" aria-modal="true" aria-label="バーコードスキャナー">
+      <div class="scanner-modal">
+        <app-barcode-scanner (detected)="barcodeDetected($event)" (close)="closeScanner()" />
+      </div>
+    </div>
+  }
+
+  <section class="scan-bar card">
+    <div class="scan-bar__label">
+      <span class="scan-bar__glyph">|||</span>
+      <div>
+        <strong>JAN コードから商品を自動登録</strong
+        ><small>Yahoo!ショッピングの商品情報を利用します</small>
+      </div>
+    </div>
+    <form class="barcode-form" (ngSubmit)="submitBarcode()">
+      <input
+        name="barcode"
+        [(ngModel)]="barcodeInput"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="例: 4900000000000"
+        aria-label="バーコード番号"
+      />
+      <button class="secondary-button" type="submit" [disabled]="isRegistering()">登録</button>
+    </form>
+  </section>
+
+  <section class="metrics" aria-label="在庫の集計">
+    <article class="metric card">
+      <span class="metric__label">登録商品</span><strong>{{ items().length }}</strong
+      ><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span>
+    </article>
+    <article class="metric card">
+      <span class="metric__label">総在庫数</span><strong>{{ totalQuantity() }}</strong
+      ><span class="metric__unit">点</span><span class="metric__icon metric__icon--green">◫</span>
+    </article>
+    <article class="metric card">
+      <span class="metric__label">在庫金額</span
+      ><strong>{{ totalValue() | currency: 'JPY' : 'symbol-narrow' : '1.0-0' }}</strong
+      ><span class="metric__icon metric__icon--gold">¥</span>
+    </article>
+    <article class="metric card metric--attention">
+      <span class="metric__label">要確認</span><strong>{{ lowStockCount() }}</strong
+      ><span class="metric__unit">品目</span><span class="metric__icon metric__icon--red">!</span>
+    </article>
+  </section>
+
+  <section class="workspace">
+    <div class="workspace__heading">
+      <div>
+        <p class="overline">INVENTORY LIST</p>
+        <h2>現在の在庫</h2>
+      </div>
+      <div class="csv-actions">
+        <label class="upload-button" [class.is-disabled]="isRegistering()">
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            (change)="importCsv($event)"
+            [disabled]="isRegistering()"
+          />CSV を読み込む
+        </label>
+        <button
+          class="outline-button"
+          type="button"
+          (click)="exportCsv()"
+          [disabled]="!items().length"
+        >
+          CSV を出力
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <label class="search-field"
+        ><span>⌕</span
+        ><input
+          [(ngModel)]="search"
+          name="search"
+          type="search"
+          placeholder="商品名・JANコード・ブランドで検索"
+      /></label>
+      <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
+    </div>
+
+    <div class="table-card card">
+      @if (isLoading()) {
+        <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
+      } @else if (!filteredItems().length) {
+        <div class="empty-state">
+          <strong>{{
+            items().length ? '該当する商品がありません' : 'まだ商品が登録されていません'
+          }}</strong>
+          <p>
+            {{
+              items().length
+                ? '検索条件を変えてみてください。'
+                : 'バーコードをスキャンするか、CSV を読み込んで始めましょう。'
+            }}
+          </p>
+        </div>
+      } @else {
+        <div class="inventory-table" role="table">
+          <div class="inventory-table__head" role="row">
+            <span>商品</span><span>JAN コード</span><span>単価</span><span>在庫数</span
+            ><span>更新日時</span>
+          </div>
+          @for (item of filteredItems(); track item.barcode) {
+            <div class="inventory-table__row" role="row">
+              <div class="product-cell">
+                @if (item.imageUrl) {
+                  <img [src]="item.imageUrl" [alt]="item.name" />
+                } @else {
+                  <span class="product-placeholder">▦</span>
+                }
+                <div>
+                  <strong>{{ item.name }}</strong
+                  ><small>{{ item.brand || item.storeName || '手入力・CSV 登録' }}</small>
+                </div>
+              </div>
+              <span class="barcode">{{ item.barcode }}</span>
+              <span>{{
+                item.unitPrice === null
+                  ? '—'
+                  : (item.unitPrice | currency: 'JPY' : 'symbol-narrow' : '1.0-0')
+              }}</span>
+              <div class="quantity-control">
+                <button
+                  type="button"
+                  aria-label="在庫を 1 減らす"
+                  (click)="changeQuantity(item, -1)"
+                >
+                  −
+                </button>
+                <strong [class]="stockClass(item.quantity)">{{ item.quantity }}</strong>
+                <button
+                  type="button"
+                  aria-label="在庫を 1 増やす"
+                  (click)="changeQuantity(item, 1)"
+                >
+                  ＋
+                </button>
+              </div>
+              <span class="updated">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="manual card">
+    <div class="manual__intro">
+      <p class="overline">FALLBACK</p>
+      <h2>商品情報が見つからない場合</h2>
+      <p>Yahoo!ショッピングに掲載されていない商品も、手入力で在庫台帳へ追加できます。</p>
+    </div>
+    <form class="manual__form" (ngSubmit)="registerManualProduct()">
+      <input
+        name="manualBarcode"
+        [(ngModel)]="manualBarcode"
+        placeholder="バーコード"
+        inputmode="numeric"
+      />
+      <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
+      <input
+        name="manualPrice"
+        [(ngModel)]="manualPrice"
+        placeholder="単価 (円)"
+        type="number"
+        min="0"
+      />
+      <button class="outline-button" type="submit" [disabled]="isRegistering()">
+        手入力で登録
+      </button>
+    </form>
+  </section>
+  <footer>ZAiKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
+</main>
