@@ -9,10 +9,8 @@ import {
   getDoc,
   getFirestore,
   onSnapshot,
-  query,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { environment } from '../../environments/environment';
@@ -83,46 +81,14 @@ export class AccessControlService {
     };
   }
 
-  watchPendingRequests(
+  watchAccessRequests(
     next: (requests: AccessRequest[]) => void,
     onError: (error: Error) => void,
   ): Unsubscribe {
     const db = this.requireDatabase();
-    const requestsQuery = query(
-      collection(db, ACCESS_REQUESTS),
-      where('status', '==', 'pending'),
-    );
-
     return onSnapshot(
-      requestsQuery,
-      (snapshot) =>
-        next(
-          snapshot.docs
-            .map((item) => item.data() as AccessRequest)
-            .sort((first, second) => second.requestedAt.localeCompare(first.requestedAt)),
-        ),
-      (error) => onError(error),
-    );
-  }
-
-  watchApprovedRequests(
-    next: (requests: AccessRequest[]) => void,
-    onError: (error: Error) => void,
-  ): Unsubscribe {
-    const db = this.requireDatabase();
-    const requestsQuery = query(
       collection(db, ACCESS_REQUESTS),
-      where('status', '==', 'approved'),
-    );
-
-    return onSnapshot(
-      requestsQuery,
-      (snapshot) =>
-        next(
-          snapshot.docs
-            .map((item) => item.data() as AccessRequest)
-            .sort((first, second) => first.displayName.localeCompare(second.displayName, 'ja')),
-        ),
+      (snapshot) => next(snapshot.docs.map((item) => item.data() as AccessRequest)),
       (error) => onError(error),
     );
   }

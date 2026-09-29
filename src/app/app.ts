@@ -31,8 +31,7 @@ export class App implements OnDestroy {
   private readonly yahooShopping = inject(YahooShoppingService);
   private stopWatching?: () => void;
   private stopAccessWatching?: () => void;
-  private stopPendingRequests?: () => void;
-  private stopApprovedRequests?: () => void;
+  private stopAccessRequests?: () => void;
   private accessCheckTimeout?: ReturnType<typeof setTimeout>;
 
   protected readonly user = this.auth.user;
@@ -81,8 +80,7 @@ export class App implements OnDestroy {
   ngOnDestroy(): void {
     this.stopWatching?.();
     this.stopAccessWatching?.();
-    this.stopPendingRequests?.();
-    this.stopApprovedRequests?.();
+    this.stopAccessRequests?.();
     this.authStateEffect.destroy();
     this.clearAccessCheckTimeout();
   }
@@ -103,10 +101,8 @@ export class App implements OnDestroy {
     this.stopWatching = undefined;
     this.stopAccessWatching?.();
     this.stopAccessWatching = undefined;
-    this.stopPendingRequests?.();
-    this.stopPendingRequests = undefined;
-    this.stopApprovedRequests?.();
-    this.stopApprovedRequests = undefined;
+    this.stopAccessRequests?.();
+    this.stopAccessRequests = undefined;
     this.resetSignedOutSession();
     await this.auth.signOut();
   }
@@ -181,16 +177,13 @@ export class App implements OnDestroy {
   protected openAdmin(): void {
     if (!this.isDeveloper()) return;
     this.activePage.set('admin');
-    this.watchPendingRequests();
-    this.watchApprovedRequests();
+    this.watchAccessRequests();
   }
 
   protected openInventory(): void {
     this.activePage.set('inventory');
-    this.stopPendingRequests?.();
-    this.stopPendingRequests = undefined;
-    this.stopApprovedRequests?.();
-    this.stopApprovedRequests = undefined;
+    this.stopAccessRequests?.();
+    this.stopAccessRequests = undefined;
     this.pendingRequests.set([]);
     this.approvedRequests.set([]);
   }
@@ -289,18 +282,19 @@ export class App implements OnDestroy {
     );
   }
 
-  private watchPendingRequests(): void {
-    if (this.stopPendingRequests) return;
-    this.stopPendingRequests = this.access.watchPendingRequests(
-      (requests) => this.pendingRequests.set(requests),
-      (error) => this.showNotice('error', this.errorMessage(error)),
-    );
-  }
-
-  private watchApprovedRequests(): void {
-    if (this.stopApprovedRequests) return;
-    this.stopApprovedRequests = this.access.watchApprovedRequests(
-      (requests) => this.approvedRequests.set(requests),
+  private watchAccessRequests(): void {
+    if (this.stopAccessRequests) return;
+    this.stopAccessRequests = this.access.watchAccessRequests(
+      (requests) => {
+        const pending = requests
+          .filter((request) => request.status === 'pending')
+          .sort((first, second) => second.requestedAt.localeCompare(first.requestedAt));
+        const approved = requests
+          .filter((request) => request.status === 'approved')
+          .sort((first, second) => first.displayName.localeCompare(second.displayName, 'ja'));
+        this.pendingRequests.set(pending);
+        this.approvedRequests.set(approved);
+      },
       (error) => this.showNotice('error', this.errorMessage(error)),
     );
   }
@@ -311,10 +305,8 @@ export class App implements OnDestroy {
     this.stopWatching = undefined;
     this.stopAccessWatching?.();
     this.stopAccessWatching = undefined;
-    this.stopPendingRequests?.();
-    this.stopPendingRequests = undefined;
-    this.stopApprovedRequests?.();
-    this.stopApprovedRequests = undefined;
+    this.stopAccessRequests?.();
+    this.stopAccessRequests = undefined;
     this.items.set([]);
     this.pendingRequests.set([]);
     this.approvedRequests.set([]);
