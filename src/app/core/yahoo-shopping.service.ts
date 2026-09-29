@@ -17,28 +17,22 @@ interface YahooHit {
   seller?: { name?: string };
 }
 
-const ITEM_SEARCH_URL = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch';
-
 @Injectable({ providedIn: 'root' })
 export class YahooShoppingService {
   private readonly http = inject(HttpClient);
 
   searchByBarcode(barcode: string): Observable<CatalogProduct[]> {
-    const usingProxy = Boolean(environment.yahooShopping.proxyUrl);
-    if (!usingProxy && !environment.yahooShopping.appId) {
+    const endpoint = environment.yahooShopping.proxyUrl.trim();
+    if (!endpoint) {
       return throwError(
         () =>
           new Error(
-            'src/environments/environment.ts に Yahoo!ショッピングの Client ID を設定してください。',
+            'Vercel のデプロイ後、src/environments/environment.ts の yahooShopping.proxyUrl に /api/yahoo-item-search の URL を設定してください。',
           ),
       );
     }
 
-    const endpoint = environment.yahooShopping.proxyUrl || ITEM_SEARCH_URL;
-    let params = new HttpParams().set('jan_code', barcode).set('hits', '10');
-    if (!usingProxy) {
-      params = params.set('appid', environment.yahooShopping.appId);
-    }
+    const params = new HttpParams().set('jan_code', barcode).set('hits', '10');
 
     return this.http.get<YahooSearchResponse>(endpoint, { params }).pipe(
       map((response) =>

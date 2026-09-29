@@ -14,9 +14,9 @@ export const environment = {
     appId: '1:1084468484848:web:1234567890abcdef',
   },
   yahooShopping: {
-    // Yahoo!デベロッパーネットワークで発行した Client ID（appid）
+    // Vercel 構成では使用しません。Client ID は Vercel の環境変数に移してください。
     appId: 'dmVyPTIwMjUwNyZpZD1JYkNlUThmSERLJmhhc2g9TTJObU4yUXdZV00wWkRKbFpUbGhaZw',
-    // 本番では Cloud Functions 等のプロキシ URL を設定することを推奨します。
-    proxyUrl: '',
+    // Vercel 上では同じデプロイメントのサーバーレス関数を呼び出します。
+    proxyUrl: '/api/yahoo-item-search',
   },
 };

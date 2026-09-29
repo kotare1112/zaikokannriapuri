@@ -14,8 +14,8 @@ Angular と Firebase（Cloud Firestore）で作る、バーコード起点の在
 
 1. Firebase コンソールで Web アプリと Cloud Firestore を作成します。
 2. `src/environments/environment.ts` に Firebase の Web 設定を入力します。
-3. [Yahoo!デベロッパーネットワーク](https://developer.yahoo.co.jp/) でアプリケーションを作成し、Client ID を `yahooShopping.appId` に入力します。
-4. 依存関係を入れて起動します。
+3. [Yahoo!デベロッパーネットワーク](https://developer.yahoo.co.jp/) でアプリケーションを作成し、Client ID を取得します。
+4. 下記「Vercel の設定」を完了してから、依存関係を入れて起動します。
 
 ```bash
 npm install
@@ -23,6 +23,22 @@ npm start
 ```
 
 ブラウザで `http://localhost:4200` を開きます。カメラ読取りには HTTPS または localhost とブラウザのカメラ許可が必要です。
+
+## Vercel の設定（Yahoo API プロキシ）
+
+Yahoo!商品検索 API はブラウザから直接呼び出すと CORS により遮断されるため、このリポジトリには Vercel Function の `api/yahoo-item-search.ts` が含まれています。Yahoo! の Client ID はフロントエンドには置かず、Vercel の環境変数へ設定してください。
+
+1. この Git リポジトリを Vercel に Import します。Framework Preset は `Angular`、Build Command は `npm run build`、Output Directory は `dist/zaiko-inventory/browser` です。
+2. Vercel の対象プロジェクトで **Settings → Environment Variables** を開きます。
+3. 以下の環境変数を Production / Preview / Development に追加します。
+
+   ```text
+   YAHOO_SHOPPING_APP_ID=Yahoo!デベロッパーネットワークで発行したClient ID
+   ```
+
+4. Deploy します。フロントエンドは同じ Vercel デプロイメントの `/api/yahoo-item-search` を自動的に利用します。
+
+`src/environments/environment.ts` の `yahooShopping.proxyUrl` は `/api/yahoo-item-search` のままにしてください。`yahooShopping.appId` は Vercel 構成では不要なので、環境変数の設定後は空欄にして構いません。
 
 ### Firestore Security Rules（開発用の最小例）
 
@@ -51,5 +67,5 @@ barcode,name,quantity,unit_price,operation,brand,store_name,product_url
 ## 本番運用メモ
 
 - Firebase の Web 設定値はクライアントに含まれる前提です。データの保護は Security Rules と Authentication で行ってください。
-- Yahoo! の Client ID をフロントエンドに置きたくない、または API の利用制御をしたい場合は、Cloud Functions 等で `proxyUrl` を実装して `environment.ts` の `yahooShopping.proxyUrl` に設定してください。
+- Yahoo! の Client ID は Vercel の `YAHOO_SHOPPING_APP_ID` として管理します。`.env.local` などの実値ファイルは Git に追加しないでください。
 - `npm run build` で本番ビルドを検証できます。

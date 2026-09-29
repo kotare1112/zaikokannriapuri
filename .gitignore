@@ -10,6 +10,8 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+.env
+.env.local
 
 # IDEs and editors
 .idea/
@@ -42,3 +44,5 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+.vercel
+.env*
