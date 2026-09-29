@@ -179,21 +179,39 @@ button:disabled,
   gap: 10px;
   width: min(100%, 410px);
 }
-.hero__operation-actions {
+.barcode-tabs {
+  background: #eef2f8;
+  border-radius: 11px;
   display: flex;
   gap: 10px;
+  padding: 5px;
 }
-.hero__operation-actions > button {
+.barcode-tab {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #64718a;
+  cursor: pointer;
+  display: inline-flex;
   flex: 1;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 750;
+  gap: 8px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 12px;
 }
-.hero__operation-actions .is-selected {
-  box-shadow: 0 0 0 3px rgba(47, 111, 236, 0.16);
+.barcode-tab--active {
+  background: white;
+  box-shadow: 0 2px 7px rgba(23, 39, 71, 0.12);
+  color: #2866e5;
 }
-.hero__operation-actions .danger-button.is-selected {
-  border-color: #d66a72;
-  box-shadow: 0 0 0 3px rgba(199, 78, 86, 0.13);
+.barcode-tab--delete.barcode-tab--active {
+  color: #bd4e57;
 }
-.barcode-action {
+.barcode-tab-panel {
   align-items: center;
   background: #eef4ff;
   border: 1px solid #ccdcff;
@@ -204,21 +222,21 @@ button:disabled,
   justify-content: space-between;
   padding: 10px 11px 10px 14px;
 }
-.barcode-action--delete {
+.barcode-tab-panel--delete {
   background: #fff5f5;
   border-color: #f1d0d2;
   color: #b94a53;
 }
-.barcode-action small,
-.barcode-action strong {
+.barcode-tab-panel small,
+.barcode-tab-panel strong {
   display: block;
 }
-.barcode-action small {
+.barcode-tab-panel small {
   font-size: 0.68rem;
   font-weight: 700;
   opacity: 0.75;
 }
-.barcode-action strong {
+.barcode-tab-panel strong {
   font-size: 0.86rem;
   margin-top: 2px;
 }
@@ -917,8 +935,12 @@ footer {
   .hero__actions {
     flex-direction: column;
   }
-  .hero__operation-actions {
+  .barcode-tab-panel {
+    align-items: stretch;
     flex-direction: column;
+  }
+  .barcode-tab-panel .barcode-action__button {
+    width: 100%;
   }
   .danger-button {
     width: 100%;

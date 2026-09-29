@@ -47,7 +47,7 @@ export class App implements OnDestroy {
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
   protected readonly scannerMode = signal<ScannerMode>('register');
-  protected readonly selectedBarcodeAction = signal<ScannerMode | null>(null);
+  protected readonly selectedBarcodeAction = signal<ScannerMode>('register');
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
   protected readonly isSigningIn = signal(false);
@@ -115,7 +115,7 @@ export class App implements OnDestroy {
 
   protected openScannerForSelectedAction(): void {
     const mode = this.selectedBarcodeAction();
-    if (!mode || !this.ensureInventoryAccess()) return;
+    if (!this.ensureInventoryAccess()) return;
     this.scannerMode.set(mode);
     this.scannerOpen.set(true);
   }
@@ -320,7 +320,7 @@ export class App implements OnDestroy {
     this.activePage.set('inventory');
     this.accessStatus.set('loading');
     this.scannerOpen.set(false);
-    this.selectedBarcodeAction.set(null);
+    this.selectedBarcodeAction.set('register');
     this.isLoading.set(false);
   }
 
