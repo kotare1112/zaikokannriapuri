@@ -102,6 +102,43 @@
             }
           }
         </section>
+
+        <section class="member-section" aria-labelledby="members-title">
+          <div class="member-section__heading">
+            <div>
+              <p class="overline">REGISTERED ACCOUNTS</p>
+              <h2 id="members-title">登録済みアカウント</h2>
+              <p>在庫管理を利用できるGoogleアカウントです。</p>
+            </div>
+            <span class="request-count">{{ approvedRequests().length + 1 }} 人</span>
+          </div>
+          <section class="request-list card" aria-label="登録済みアカウント一覧">
+            <article class="request-row request-row--owner">
+              <div class="request-row__avatar">{{ userLabel().slice(0, 1) || '?' }}</div>
+              <div class="request-row__person">
+                <strong>{{ userLabel() }}</strong>
+                <span>{{ user()?.email }}</span>
+                <small>開発者・管理者</small>
+              </div>
+              <span class="account-role">管理者</span>
+            </article>
+            @for (request of approvedRequests(); track request.uid) {
+              <article class="request-row">
+                <div class="request-row__avatar">{{ request.displayName.slice(0, 1) || '?' }}</div>
+                <div class="request-row__person">
+                  <strong>{{ request.displayName || '名前未設定' }}</strong>
+                  <span>{{ request.email }}</span>
+                  <small>承認済み</small>
+                </div>
+                <div class="request-row__actions">
+                  <button class="remove-button" type="button" (click)="removeAccess(request)" [disabled]="isRemoving() === request.uid">
+                    {{ isRemoving() === request.uid ? '削除中…' : '利用を削除' }}
+                  </button>
+                </div>
+              </article>
+            }
+          </section>
+        </section>
       </section>
     } @else {
       <section class="hero">
@@ -143,7 +180,6 @@
       <section class="metrics" aria-label="在庫の集計">
         <article class="metric card"><span class="metric__label">登録商品</span><strong>{{ items().length }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--blue">▦</span></article>
         <article class="metric card"><span class="metric__label">総在庫数</span><strong>{{ totalQuantity() }}</strong><span class="metric__unit">点</span><span class="metric__icon metric__icon--green">◫</span></article>
-        <article class="metric card"><span class="metric__label">在庫金額</span><strong>{{ totalValue() | currency: 'JPY' : 'symbol-narrow' : '1.0-0' }}</strong><span class="metric__icon metric__icon--gold">¥</span></article>
         <article class="metric card metric--attention"><span class="metric__label">要確認</span><strong>{{ lowStockCount() }}</strong><span class="metric__unit">品目</span><span class="metric__icon metric__icon--red">!</span></article>
       </section>
 

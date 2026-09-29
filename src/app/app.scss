@@ -378,7 +378,7 @@ button:disabled,
 .metrics {
   display: grid;
   gap: 13px;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   margin: 28px 0 44px;
 }
 .metric {
@@ -759,6 +759,50 @@ button:disabled,
   gap: 8px;
   margin-left: auto;
 }
+.member-section {
+  margin-top: 34px;
+}
+.member-section__heading {
+  align-items: flex-end;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin: 0 0 14px;
+}
+.member-section__heading h2 {
+  color: #1e2a40;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+  margin: 5px 0 0;
+}
+.member-section__heading p:last-child {
+  color: #77849a;
+  font-size: 0.82rem;
+  margin: 7px 0 0;
+}
+.request-row--owner {
+  background: #f8fbff;
+}
+.account-role {
+  background: #e7efff;
+  border-radius: 100px;
+  color: #356fdf;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: auto;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+.remove-button {
+  background: #fff7f7;
+  border: 1px solid #f3c5c8;
+  color: #c65158;
+  padding: 10px 14px;
+}
+.remove-button:hover {
+  background: #fff0f1;
+  border-color: #df9197;
+}
 footer {
   color: #9aa5b6;
   font-size: 0.7rem;
@@ -798,6 +842,10 @@ footer {
     display: flex;
   }
   .admin-page__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .member-section__heading {
     align-items: flex-start;
     flex-direction: column;
   }

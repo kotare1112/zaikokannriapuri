@@ -32,13 +32,16 @@ export class App implements OnInit, OnDestroy {
   private stopWatching?: () => void;
   private stopAccessWatching?: () => void;
   private stopPendingRequests?: () => void;
+  private stopApprovedRequests?: () => void;
 
   protected readonly user = this.auth.user;
   protected readonly authLoading = this.auth.loading;
   protected readonly accessStatus = signal<AccessStatus | 'loading'>('loading');
   protected readonly activePage = signal<Page>('inventory');
   protected readonly pendingRequests = signal<AccessRequest[]>([]);
+  protected readonly approvedRequests = signal<AccessRequest[]>([]);
   protected readonly isReviewing = signal<string | null>(null);
+  protected readonly isRemoving = signal<string | null>(null);
   protected readonly items = signal<InventoryItem[]>([]);
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
@@ -65,9 +68,6 @@ export class App implements OnInit, OnDestroy {
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
-  protected readonly totalValue = computed(() =>
-    this.items().reduce((total, item) => total + (item.unitPrice ?? 0) * item.quantity, 0),
-  );
   protected readonly lowStockCount = computed(
     () => this.items().filter((item) => item.quantity <= 3).length,
   );
@@ -80,6 +80,7 @@ export class App implements OnInit, OnDestroy {
     this.stopWatching?.();
     this.stopAccessWatching?.();
     this.stopPendingRequests?.();
+    this.stopApprovedRequests?.();
   }
 
   protected async signIn(): Promise<void> {
@@ -101,8 +102,11 @@ export class App implements OnInit, OnDestroy {
     this.stopAccessWatching = undefined;
     this.stopPendingRequests?.();
     this.stopPendingRequests = undefined;
+    this.stopApprovedRequests?.();
+    this.stopApprovedRequests = undefined;
     this.items.set([]);
     this.pendingRequests.set([]);
+    this.approvedRequests.set([]);
     this.activePage.set('inventory');
     this.accessStatus.set('loading');
     this.scannerOpen.set(false);
@@ -185,10 +189,17 @@ export class App implements OnInit, OnDestroy {
     if (!this.isDeveloper()) return;
     this.activePage.set('admin');
     this.watchPendingRequests();
+    this.watchApprovedRequests();
   }
 
   protected openInventory(): void {
     this.activePage.set('inventory');
+    this.stopPendingRequests?.();
+    this.stopPendingRequests = undefined;
+    this.stopApprovedRequests?.();
+    this.stopApprovedRequests = undefined;
+    this.pendingRequests.set([]);
+    this.approvedRequests.set([]);
   }
 
   protected async reviewRequest(request: AccessRequest, status: 'approved' | 'rejected'): Promise<void> {
@@ -203,6 +214,24 @@ export class App implements OnInit, OnDestroy {
       this.showNotice('error', this.errorMessage(error));
     } finally {
       this.isReviewing.set(null);
+    }
+  }
+
+  protected async removeAccess(request: AccessRequest): Promise<void> {
+    const user = this.user();
+    if (!user || !this.isDeveloper()) return;
+
+    const accountName = request.displayName || request.email;
+    if (!window.confirm(`「${accountName}」の在庫管理の利用を削除しますか？`)) return;
+
+    this.isRemoving.set(request.uid);
+    try {
+      await this.access.removeAccess(request, user);
+      this.showNotice('success', `「${accountName}」の利用を削除しました。`);
+    } catch (error) {
+      this.showNotice('error', this.errorMessage(error));
+    } finally {
+      this.isRemoving.set(null);
     }
   }
 
@@ -263,6 +292,14 @@ export class App implements OnInit, OnDestroy {
     if (this.stopPendingRequests) return;
     this.stopPendingRequests = this.access.watchPendingRequests(
       (requests) => this.pendingRequests.set(requests),
+      (error) => this.showNotice('error', this.errorMessage(error)),
+    );
+  }
+
+  private watchApprovedRequests(): void {
+    if (this.stopApprovedRequests) return;
+    this.stopApprovedRequests = this.access.watchApprovedRequests(
+      (requests) => this.approvedRequests.set(requests),
       (error) => this.showNotice('error', this.errorMessage(error)),
     );
   }

@@ -4,6 +4,7 @@ import {
   Firestore,
   Unsubscribe,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getFirestore,
@@ -104,6 +105,28 @@ export class AccessControlService {
     );
   }
 
+  watchApprovedRequests(
+    next: (requests: AccessRequest[]) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    const db = this.requireDatabase();
+    const requestsQuery = query(
+      collection(db, ACCESS_REQUESTS),
+      where('status', '==', 'approved'),
+    );
+
+    return onSnapshot(
+      requestsQuery,
+      (snapshot) =>
+        next(
+          snapshot.docs
+            .map((item) => item.data() as AccessRequest)
+            .sort((first, second) => first.displayName.localeCompare(second.displayName, 'ja')),
+        ),
+      (error) => onError(error),
+    );
+  }
+
   async reviewRequest(request: AccessRequest, status: 'approved' | 'rejected', user: User): Promise<void> {
     const db = this.requireDatabase();
     if (!this.isDeveloper(user)) {
@@ -115,6 +138,15 @@ export class AccessControlService {
       reviewedAt: new Date().toISOString(),
       reviewedBy: user.email ?? '',
     });
+  }
+
+  async removeAccess(request: AccessRequest, user: User): Promise<void> {
+    const db = this.requireDatabase();
+    if (!this.isDeveloper(user)) {
+      throw new Error('アカウントの削除は管理者だけが実行できます。');
+    }
+
+    await deleteDoc(doc(db, ACCESS_REQUESTS, request.uid));
   }
 
   private async createRequestIfMissing(reference: ReturnType<typeof doc>, user: User): Promise<void> {
