@@ -8,7 +8,6 @@ import {
   getDoc,
   getFirestore,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -91,12 +90,16 @@ export class AccessControlService {
     const requestsQuery = query(
       collection(db, ACCESS_REQUESTS),
       where('status', '==', 'pending'),
-      orderBy('requestedAt', 'desc'),
     );
 
     return onSnapshot(
       requestsQuery,
-      (snapshot) => next(snapshot.docs.map((item) => item.data() as AccessRequest)),
+      (snapshot) =>
+        next(
+          snapshot.docs
+            .map((item) => item.data() as AccessRequest)
+            .sort((first, second) => second.requestedAt.localeCompare(first.requestedAt)),
+        ),
       (error) => onError(error),
     );
   }
