@@ -8,7 +8,7 @@ import {
   ViewChild,
   signal,
 } from '@angular/core';
-import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
+import type { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 
 @Component({
   selector: 'app-barcode-scanner',
@@ -25,12 +25,14 @@ export class BarcodeScannerComponent implements AfterViewInit, OnDestroy {
   private reader?: BrowserMultiFormatReader;
   private controls?: IScannerControls;
   private hasDetected = false;
+  private isDestroyed = false;
 
   async ngAfterViewInit(): Promise<void> {
     await this.start();
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
     this.stop();
   }
 
@@ -42,6 +44,11 @@ export class BarcodeScannerComponent implements AfterViewInit, OnDestroy {
   private async start(): Promise<void> {
     const preview = this.preview?.nativeElement;
     if (!preview) return;
+
+    // ZXing is only needed while the camera scanner is open. Loading it here
+    // keeps the login and inventory screens light on mobile connections.
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    if (this.isDestroyed) return;
 
     this.reader = new BrowserMultiFormatReader(undefined, {
       delayBetweenScanAttempts: 250,

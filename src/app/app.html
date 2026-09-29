@@ -164,7 +164,7 @@
               @for (item of filteredItems(); track item.barcode) {
                 <div class="inventory-table__row" role="row">
                   <div class="product-cell">
-                    @if (item.imageUrl) { <img [src]="item.imageUrl" [alt]="item.name" /> } @else { <span class="product-placeholder">▦</span> }
+                    @if (item.imageUrl) { <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" /> } @else { <span class="product-placeholder">▦</span> }
                     <div><strong>{{ item.name }}</strong><small>{{ item.brand || item.storeName || '手入力で登録' }}</small></div>
                   </div>
                   <span class="barcode">{{ item.barcode }}</span>
