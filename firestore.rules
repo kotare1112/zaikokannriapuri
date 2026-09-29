@@ -7,8 +7,17 @@ service cloud.firestore {
     }
 
     function isDeveloper() {
-      return isSignedIn()
-        && request.auth.token.email == 'kotare1112@gmail.com';
+      // 管理者は Firebase Authentication の固有 UID でも固定する。
+      // メール確認済みクレームの反映待ち中でも、管理者本人だけが
+      // 申請一覧を確認・承認できるようにする。
+      return request.auth != null
+        && (
+          request.auth.uid == 'QKWvsYuOarcMeN55ujyna2vGLHo1'
+          || (
+            isSignedIn()
+            && request.auth.token.email == 'kotare1112@gmail.com'
+          )
+        );
     }
 
     function hasApprovedAccess() {
@@ -33,6 +42,21 @@ service cloud.firestore {
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'pending';
       allow update, delete: if isDeveloper();
+
+      // 却下済みの本人だけは、Google で再ログインしたときに
+      // 申請を「pending」へ戻して再申請できる。
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && resource.data.status == 'rejected'
+        && request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'status', 'requestedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'status', 'requestedAt', 'reviewedAt', 'reviewedBy'
+        ]);
     }
 
     match /inventoryItems/{barcode} {

@@ -117,7 +117,11 @@ export class AccessControlService {
 
   private async createRequestIfMissing(reference: ReturnType<typeof doc>, user: User): Promise<void> {
     const snapshot = await getDoc(reference);
-    if (snapshot.exists()) return;
+    const currentRequest = snapshot.data() as AccessRequest | undefined;
+
+    // 却下済みのアカウントは、次回ログイン時に再申請できるようにする。
+    // 承認済み・申請中のデータはそのまま保持する。
+    if (snapshot.exists() && currentRequest?.status !== 'rejected') return;
 
     await setDoc(reference, {
       uid: user.uid,
