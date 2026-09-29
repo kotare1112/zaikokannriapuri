@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { User } from 'firebase/auth';
 import { firstValueFrom } from 'rxjs';
@@ -24,7 +24,7 @@ type ScannerMode = 'register' | 'delete';
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
-export class App implements OnInit, OnDestroy {
+export class App implements OnDestroy {
   private readonly access = inject(AccessControlService);
   private readonly auth = inject(AuthService);
   private readonly inventory = inject(InventoryRepository);
@@ -33,7 +33,6 @@ export class App implements OnInit, OnDestroy {
   private stopAccessWatching?: () => void;
   private stopPendingRequests?: () => void;
   private stopApprovedRequests?: () => void;
-  private stopAuthWatching?: () => void;
   private accessCheckTimeout?: ReturnType<typeof setTimeout>;
 
   protected readonly user = this.auth.user;
@@ -52,6 +51,15 @@ export class App implements OnInit, OnDestroy {
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
   protected readonly isSigningIn = signal(false);
+  private readonly authStateEffect = effect(() => {
+    const user = this.user();
+    if (this.authLoading()) return;
+    if (user) {
+      this.beginAccessWatching(user);
+      return;
+    }
+    this.resetSignedOutSession();
+  });
   protected search = '';
   protected barcodeInput = '';
   protected manualBarcode = '';
@@ -70,22 +78,12 @@ export class App implements OnInit, OnDestroy {
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
-  ngOnInit(): void {
-    this.stopAuthWatching = this.auth.watchUser((user) => {
-      if (user) {
-        this.beginAccessWatching(user);
-        return;
-      }
-      this.resetSignedOutSession();
-    });
-  }
-
   ngOnDestroy(): void {
     this.stopWatching?.();
     this.stopAccessWatching?.();
     this.stopPendingRequests?.();
     this.stopApprovedRequests?.();
-    this.stopAuthWatching?.();
+    this.authStateEffect.destroy();
     this.clearAccessCheckTimeout();
   }
 

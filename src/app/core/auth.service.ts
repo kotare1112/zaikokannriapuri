@@ -16,7 +16,6 @@ import { environment } from '../../environments/environment';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly auth: Auth | null;
-  private readonly ready: Promise<User | null>;
 
   readonly user = signal<User | null>(null);
   readonly loading = signal(true);
@@ -25,51 +24,34 @@ export class AuthService {
   constructor() {
     if (!this.hasFirebaseConfiguration()) {
       this.auth = null;
-      this.ready = Promise.resolve(null);
       this.loading.set(false);
       return;
     }
 
     const app = getApps().length ? getApp() : initializeApp(environment.firebase);
     this.auth = getAuth(app);
-    this.ready = new Promise((resolve) => {
-      let initialStateHandled = false;
-      const finishInitialState = (user: User | null) => {
-        this.user.set(user);
-        this.loading.set(false);
-        if (!initialStateHandled) {
-          initialStateHandled = true;
-          resolve(user);
-        }
-      };
-      const initializationTimeout = window.setTimeout(() => finishInitialState(null), 8_000);
+    const initializationTimeout = window.setTimeout(() => {
+      this.user.set(null);
+      this.loading.set(false);
+    }, 8_000);
 
-      onAuthStateChanged(this.auth!, (user) => {
-        window.clearTimeout(initializationTimeout);
-        finishInitialState(user);
+    onAuthStateChanged(this.auth, (user) => {
+      window.clearTimeout(initializationTimeout);
+      this.user.set(user);
+      this.loading.set(false);
+    });
+
+    void getRedirectResult(this.auth)
+      .then((result) => {
+        if (result?.user) this.user.set(result.user);
+      })
+      .catch((error: unknown) => {
+        this.signInError.set(this.errorMessage(error));
       });
-    });
-
-    void getRedirectResult(this.auth).catch((error: unknown) => {
-      this.signInError.set(this.errorMessage(error));
-    });
-  }
-
-  async waitUntilReady(): Promise<User | null> {
-    return this.ready;
   }
 
   isSignedIn(): boolean {
     return this.user() !== null;
-  }
-
-  watchUser(next: (user: User | null) => void): () => void {
-    if (!this.auth) {
-      next(null);
-      return () => undefined;
-    }
-
-    return onAuthStateChanged(this.auth, next);
   }
 
   async signInWithGoogle(): Promise<User | null> {
