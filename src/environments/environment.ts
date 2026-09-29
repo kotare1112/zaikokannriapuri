@@ -7,11 +7,12 @@ export const environment = {
   production: false,
   firebase: {
     apiKey: 'AIzaSyBkEUf8egWytmGIF70KBBIyIbY-2KgHDnE',
-    authDomain: 'zaikokannriapuri.firebaseapp.com',
-    projectId: 'zaikokannriapuri',
-    storageBucket: 'zaikokannriapuri.appspot.com',
-    messagingSenderId: '1084468484848',
-    appId: '1:1084468484848:web:1234567890abcdef',
+    authDomain: 'zaikokannriapuri-d3a2a.firebaseapp.com',
+    projectId: 'zaikokannriapuri-d3a2a',
+    storageBucket: 'zaikokannriapuri-d3a2a.firebasestorage.app',
+    messagingSenderId: '86867562188',
+    appId: '1:86867562188:web:f61b0a180ea3e506873c69',
+    measurementId: 'G-4W7BLV5CM6',
   },
   yahooShopping: {
     // Vercel 構成では使用しません。Client ID は Vercel の環境変数に移してください。

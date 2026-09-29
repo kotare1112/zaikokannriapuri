@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { CsvInventoryService } from './core/csv-inventory.service';
+import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
 import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scanner';
@@ -18,15 +19,19 @@ type Notice = { kind: 'success' | 'error' | 'info'; text: string };
 })
 export class App implements OnInit, OnDestroy {
   private readonly inventory = inject(InventoryRepository);
+  private readonly auth = inject(AuthService);
   private readonly yahooShopping = inject(YahooShoppingService);
   private readonly csv = inject(CsvInventoryService);
   private stopWatching?: () => void;
 
   protected readonly items = signal<InventoryItem[]>([]);
+  protected readonly user = this.auth.user;
+  protected readonly authLoading = this.auth.loading;
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
+  protected readonly isSigningIn = signal(false);
   protected search = '';
   protected barcodeInput = '';
   protected manualBarcode = '';
@@ -55,6 +60,51 @@ export class App implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
+    void this.initializeInventory();
+  }
+
+  private async initializeInventory(): Promise<void> {
+    const user = await this.auth.waitUntilReady();
+    if (!user) {
+      this.isLoading.set(false);
+      this.showNotice('info', '在庫を表示・操作するには Google でログインしてください。');
+      return;
+    }
+
+    this.startWatchingInventory();
+  }
+
+  protected async signIn(): Promise<void> {
+    this.isSigningIn.set(true);
+    try {
+      await this.auth.signInWithGoogle();
+      this.startWatchingInventory();
+      this.showNotice('success', 'Google アカウントでログインしました。');
+    } catch (error) {
+      this.showNotice('error', this.errorMessage(error));
+    } finally {
+      this.isSigningIn.set(false);
+    }
+  }
+
+  protected async signOut(): Promise<void> {
+    this.stopWatching?.();
+    this.stopWatching = undefined;
+    this.items.set([]);
+    this.scannerOpen.set(false);
+    await this.auth.signOut();
+    this.isLoading.set(false);
+    this.showNotice('info', 'ログアウトしました。');
+  }
+
+  protected userLabel(): string {
+    const user = this.user();
+    return user?.displayName || user?.email || 'ログイン中';
+  }
+
+  private startWatchingInventory(): void {
+    this.stopWatching?.();
+    this.isLoading.set(true);
     this.stopWatching = this.inventory.watch(
       (items) => {
         this.items.set(items);
@@ -191,6 +241,10 @@ export class App implements OnInit, OnDestroy {
   }
 
   private ensureFirebase(): boolean {
+    if (!this.auth.isSignedIn()) {
+      this.showNotice('info', '先に Google でログインしてください。');
+      return false;
+    }
     if (this.inventory.isAvailable()) return true;
     this.showNotice('error', this.inventory.configurationMessage());
     return false;

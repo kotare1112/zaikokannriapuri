@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the project owner's verified Google account can access inventory.
+    function isInventoryManager() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'kotare1112@gmail.com';
+    }
+
+    match /inventoryItems/{barcode} {
+      allow read: if isInventoryManager();
+      allow create, update: if isInventoryManager()
+        && request.resource.data.barcode == barcode;
+    }
+  }
+}

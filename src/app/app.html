@@ -3,7 +3,18 @@
     <a class="brand" href="#top" aria-label="Zaiko Flow ホーム">
       <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
     </a>
-    <div class="topbar__right"><span class="sync-dot"></span><span>Firestore と同期中</span></div>
+    <div class="topbar__right">
+      @if (authLoading()) {
+        <span>ログイン状態を確認中…</span>
+      } @else if (user()) {
+        <span class="sync-dot"></span><span>{{ userLabel() }}</span>
+        <button class="auth-button" type="button" (click)="signOut()">ログアウト</button>
+      } @else {
+        <button class="google-button" type="button" (click)="signIn()" [disabled]="isSigningIn()">
+          <span>G</span>{{ isSigningIn() ? 'ログインしています…' : 'Google でログイン' }}
+        </button>
+      }
+    </div>
   </header>
 
   <section class="hero">
@@ -19,7 +30,7 @@
       class="primary-button primary-button--large"
       type="button"
       (click)="openScanner()"
-      [disabled]="isRegistering()"
+      [disabled]="isRegistering() || !user()"
     >
       <span class="button-icon">▣</span>バーコードをスキャン
     </button>
@@ -63,7 +74,7 @@
         placeholder="例: 4900000000000"
         aria-label="バーコード番号"
       />
-      <button class="secondary-button" type="submit" [disabled]="isRegistering()">登録</button>
+      <button class="secondary-button" type="submit" [disabled]="isRegistering() || !user()">登録</button>
     </form>
   </section>
 
@@ -94,12 +105,12 @@
         <h2>現在の在庫</h2>
       </div>
       <div class="csv-actions">
-        <label class="upload-button" [class.is-disabled]="isRegistering()">
+        <label class="upload-button" [class.is-disabled]="isRegistering() || !user()">
           <input
             type="file"
             accept=".csv,text/csv"
             (change)="importCsv($event)"
-            [disabled]="isRegistering()"
+            [disabled]="isRegistering() || !user()"
           />CSV を読み込む
         </label>
         <button
@@ -171,6 +182,7 @@
                   type="button"
                   aria-label="在庫を 1 減らす"
                   (click)="changeQuantity(item, -1)"
+                  [disabled]="!user()"
                 >
                   −
                 </button>
@@ -179,6 +191,7 @@
                   type="button"
                   aria-label="在庫を 1 増やす"
                   (click)="changeQuantity(item, 1)"
+                  [disabled]="!user()"
                 >
                   ＋
                 </button>
@@ -212,7 +225,7 @@
         type="number"
         min="0"
       />
-      <button class="outline-button" type="submit" [disabled]="isRegistering()">
+      <button class="outline-button" type="submit" [disabled]="isRegistering() || !user()">
         手入力で登録
       </button>
     </form>

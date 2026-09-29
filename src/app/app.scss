@@ -73,6 +73,30 @@ button:disabled,
   font-size: 0.76rem;
   gap: 7px;
 }
+.google-button,
+.auth-button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d7dfeb;
+  border-radius: 8px;
+  color: #39465d;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 750;
+  gap: 7px;
+  padding: 8px 10px;
+}
+.google-button span {
+  color: #4285f4;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+.google-button:hover,
+.auth-button:hover {
+  border-color: #8ba8ed;
+  color: #2866e5;
+}
 .sync-dot {
   background: #45c596;
   border-radius: 50%;
