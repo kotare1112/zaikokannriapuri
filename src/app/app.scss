@@ -196,14 +196,14 @@ button:disabled,
   grid-template-rows: 0fr;
   opacity: 0;
   pointer-events: none;
-  transition: grid-template-rows 220ms ease, opacity 180ms ease, visibility 0s linear 220ms;
+  transition: grid-template-rows 480ms cubic-bezier(0.4, 0, 0.2, 1), opacity 360ms ease-in-out, visibility 0s linear 480ms;
   visibility: hidden;
 }
 .action-slide--open {
   grid-template-rows: 1fr;
   opacity: 1;
   pointer-events: auto;
-  transition: grid-template-rows 220ms ease, opacity 180ms ease;
+  transition: grid-template-rows 480ms cubic-bezier(0.4, 0, 0.2, 1), opacity 360ms ease-in-out;
   visibility: visible;
 }
 .action-slide__inner {
@@ -213,6 +213,11 @@ button:disabled,
   min-height: 0;
   overflow: hidden;
   padding: 10px;
+  transform: translateY(-10px);
+  transition: transform 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.action-slide--open .action-slide__inner {
+  transform: translateY(0);
 }
 .action-slide--delete .action-slide__inner {
   background: #fff4f4;
