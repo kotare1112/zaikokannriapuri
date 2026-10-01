@@ -588,6 +588,22 @@ button:disabled,
   outline: 0;
   padding: 10px 0;
 }
+.search-field input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.search-clear {
+  background: transparent;
+  border: 0;
+  color: #66758d;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  padding: 6px 2px;
+  white-space: nowrap;
+}
+.search-clear:hover {
+  color: #3264d6;
+}
 .search-submit {
   align-items: center;
   background: #4276ed;

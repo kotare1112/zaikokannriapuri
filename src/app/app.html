@@ -255,6 +255,9 @@
           <form class="search-field" (ngSubmit)="submitSearch()" role="search">
             <span aria-hidden="true">⌕</span>
             <input [(ngModel)]="searchInput" name="search" type="search" aria-label="在庫の商品名・JANコード・ブランドを検索" placeholder="商品名・JANコード・ブランドで検索" />
+            @if (searchInput || search()) {
+              <button class="search-clear" type="button" (click)="clearSearch()" aria-label="検索をクリアしてすべての商品を表示">クリア</button>
+            }
             <button class="search-submit" type="submit" aria-label="検索する" title="検索する"><span class="search-submit__triangle" aria-hidden="true"></span></button>
           </form>
           <div class="toolbar__controls">

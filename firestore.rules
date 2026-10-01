@@ -61,8 +61,15 @@ service cloud.firestore {
 
     match /inventoryItems/{barcode} {
       allow read: if canUseInventory();
-      allow create, update: if canUseInventory()
+      allow create: if canUseInventory()
         && request.resource.data.barcode == barcode;
+      // A registration must never overwrite an existing product. Stock edits
+      // can change only the count and timestamp.
+      allow update: if canUseInventory()
+        && request.resource.data.barcode == barcode
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'quantity', 'updatedAt'
+        ]);
       allow delete: if canUseInventory();
     }
 

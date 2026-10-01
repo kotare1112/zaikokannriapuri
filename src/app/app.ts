@@ -157,6 +157,14 @@ export class App implements OnDestroy {
     }
   }
 
+  protected clearSearch(): void {
+    this.searchRequestId += 1;
+    this.searchInput = '';
+    this.search.set('');
+    this.searchReading.set('');
+    this.isReadingSearchLoading.set(false);
+  }
+
   private normalizeSearchText(value: string): string {
     return value.normalize('NFKC').toLowerCase()
       .replace(/[\u30a1-\u30f6]/gu, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60))
@@ -283,7 +291,10 @@ export class App implements OnDestroy {
     this.isRegistering.set(true);
     this.showNotice('info', '在庫一覧に反映しました。保存を確認しています…');
     try {
-      const isNew = await this.inventory.registerProduct({ ...candidate.product, name }, quantity, now);
+      const isNew = await this.inventory.registerProduct(
+        { ...candidate.product, name }, quantity, now,
+        candidate.fromMaster ? candidate.product.name : undefined,
+      );
       if (!isNew) {
         this.setOptimisticChange(item.barcode, null);
         this.showNotice('info', 'すでにその商品は登録されています。');

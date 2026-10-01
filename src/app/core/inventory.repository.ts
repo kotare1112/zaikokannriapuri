@@ -11,6 +11,7 @@ import {
   orderBy,
   query,
   runTransaction,
+  writeBatch,
 } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { environment } from '../../environments/environment';
@@ -77,36 +78,36 @@ export class InventoryRepository {
     return snapshot.exists() ? snapshot.data() as ProductMaster : null;
   }
 
-  async registerProduct(product: ProductDetails, quantity: number, now = new Date().toISOString()): Promise<boolean> {
+  async registerProduct(
+    product: ProductDetails,
+    quantity: number,
+    now = new Date().toISOString(),
+    masterName?: string,
+  ): Promise<boolean> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, product.barcode);
     const masterReference = doc(db, MASTER_COLLECTION, product.barcode);
-    return runTransaction(db, async (transaction) => {
-      const [snapshot, masterSnapshot] = await Promise.all([
-        transaction.get(reference),
-        transaction.get(masterReference),
-      ]);
-      if (snapshot.exists()) return false;
-      const next: InventoryItem = {
-        barcode: product.barcode,
-        name: product.name,
-        quantity,
-        imageUrl: product.imageUrl,
-        productUrl: product.productUrl,
-        source: product.source,
-        brand: product.brand,
-        storeName: product.storeName,
-        createdAt: now,
-        updatedAt: now,
-      };
-      if (!masterSnapshot.exists()) {
-        transaction.set(masterReference, { ...product, createdAt: now } satisfies ProductMaster);
-      } else if ((masterSnapshot.data() as ProductMaster).name !== product.name) {
-        transaction.update(masterReference, { name: product.name });
-      }
-      transaction.set(reference, next);
+    const next: InventoryItem = { ...product, quantity, createdAt: now, updatedAt: now };
+    const batch = writeBatch(db);
+    if (masterName === undefined) {
+      batch.set(masterReference, { ...product, createdAt: now } satisfies ProductMaster);
+    } else if (masterName !== product.name) {
+      batch.update(masterReference, { name: product.name });
+    }
+    batch.set(reference, next);
+    try {
+      await batch.commit();
       return true;
-    });
+    } catch (error) {
+      // A concurrent registration is rejected by the create-only inventory rule.
+      // Check the document only on failure so the usual path needs one write round trip.
+      try {
+        if ((await getDoc(reference)).exists()) return false;
+      } catch {
+        // Preserve the original write error when the follow-up read is unavailable.
+      }
+      throw error;
+    }
   }
 
   async changeQuantity(barcode: string, difference: number): Promise<void> {
@@ -139,30 +140,9 @@ export class InventoryRepository {
   async deleteProduct(barcode: string): Promise<void> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, barcode);
-    const masterReference = doc(db, MASTER_COLLECTION, barcode);
-
-    await runTransaction(db, async (transaction) => {
-      const [snapshot, masterSnapshot] = await Promise.all([
-        transaction.get(reference),
-        transaction.get(masterReference),
-      ]);
-      if (!snapshot.exists()) throw new Error('削除する商品が見つかりません。');
-      if (!masterSnapshot.exists()) {
-        const item = snapshot.data() as InventoryItem;
-        const { barcode: itemBarcode, name, imageUrl, productUrl, source, brand, storeName } = item;
-        transaction.set(masterReference, {
-          barcode: itemBarcode,
-          name,
-          imageUrl: imageUrl ?? '',
-          productUrl: productUrl ?? '',
-          source: source ?? 'manual',
-          brand: brand ?? '',
-          storeName: storeName ?? '',
-          createdAt: item.createdAt ?? new Date().toISOString(),
-        } satisfies ProductMaster);
-      }
-      transaction.delete(reference);
-    });
+    // Every registration writes its master atomically. Removing only the inventory
+    // document keeps that master available for a later registration.
+    await writeBatch(db).delete(reference).commit();
   }
 
   private hasFirebaseConfiguration(): boolean {
