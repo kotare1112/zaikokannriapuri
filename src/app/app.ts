@@ -46,7 +46,7 @@ export class App implements OnDestroy {
   protected readonly items = signal<InventoryItem[]>([]);
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
-  protected readonly scannerMode = signal<ScannerMode>('register');
+  protected readonly scannerMode = signal<ScannerMode | 'manual'>('register');
   protected readonly expandedAction = signal<ScannerMode | null>(null);
   protected readonly janEntryMode = signal<ScannerMode | null>(null);
   protected readonly isRegistering = signal(false);
@@ -115,7 +115,7 @@ export class App implements OnDestroy {
     this.janEntryMode.set(null);
   }
 
-  protected openScanner(mode: ScannerMode): void {
+  protected openScanner(mode: ScannerMode | 'manual'): void {
     if (!this.ensureInventoryAccess()) return;
     this.scannerMode.set(mode);
     this.scannerOpen.set(true);
@@ -135,6 +135,16 @@ export class App implements OnDestroy {
 
   protected async barcodeDetected(barcode: string): Promise<void> {
     this.scannerOpen.set(false);
+    if (this.scannerMode() === 'manual') {
+      const janCode = this.cleanBarcode(barcode);
+      if (!janCode) {
+        this.showNotice('error', 'JANコードを読み取れませんでした。もう一度お試しください。');
+        return;
+      }
+      this.manualBarcode = janCode;
+      this.showNotice('info', 'JANコードを入力しました。商品名を入力して登録してください。');
+      return;
+    }
     if (this.scannerMode() === 'delete') {
       await this.deleteFromBarcode(barcode);
       return;

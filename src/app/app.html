@@ -189,9 +189,9 @@
       </section>
 
       @if (scannerOpen()) {
-        <div class="scanner-layer" role="dialog" aria-modal="true" [attr.aria-label]="scannerMode() === 'delete' ? '商品削除用バーコードスキャナー' : '商品登録用バーコードスキャナー'">
+        <div class="scanner-layer" role="dialog" aria-modal="true" [attr.aria-label]="scannerMode() === 'manual' ? '手入力フォーム用JANコードスキャナー' : scannerMode() === 'delete' ? '商品削除用バーコードスキャナー' : '商品登録用バーコードスキャナー'">
           <div class="scanner-modal">
-            <p class="scanner-modal__mode">{{ scannerMode() === 'delete' ? '削除する商品のバーコードを読み取ってください' : '登録する商品のバーコードを読み取ってください' }}</p>
+            <p class="scanner-modal__mode">{{ scannerMode() === 'manual' ? '手入力する商品のJANコードを読み取ってください' : scannerMode() === 'delete' ? '削除する商品のバーコードを読み取ってください' : '登録する商品のバーコードを読み取ってください' }}</p>
             <app-barcode-scanner (detected)="barcodeDetected($event)" (close)="closeScanner()" />
           </div>
         </div>
@@ -255,7 +255,10 @@
       <section class="manual card">
         <div class="manual__intro"><p class="overline">FALLBACK</p><h2>商品情報が見つからない場合</h2><p>Yahoo!ショッピングに掲載されていない商品も、手入力で在庫台帳へ追加できます。</p></div>
         <form class="manual__form" (ngSubmit)="registerManualProduct()">
-          <input name="manualBarcode" [(ngModel)]="manualBarcode" placeholder="バーコード" inputmode="numeric" />
+          <div class="manual__barcode">
+            <input name="manualBarcode" [(ngModel)]="manualBarcode" placeholder="JANコード" inputmode="numeric" aria-label="JANコード" />
+            <button class="manual__camera" type="button" aria-label="カメラでJANコードを読み取る" title="カメラでJANコードを読み取る" (click)="openScanner('manual')" [disabled]="isRegistering()">📷</button>
+          </div>
           <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
           <button class="outline-button" type="submit" [disabled]="isRegistering()">手入力で登録</button>
         </form>

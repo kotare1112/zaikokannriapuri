@@ -722,8 +722,13 @@ button:disabled,
 .manual__form {
   display: grid;
   gap: 8px;
-  grid-template-columns: 150px minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(175px, 210px) minmax(180px, 1fr) auto;
   min-width: 500px;
+}
+.manual__barcode {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
 }
 .manual__form input {
   border: 1px solid #dce3ed;
@@ -731,6 +736,22 @@ button:disabled,
   min-width: 0;
   outline-color: #4b7eea;
   padding: 10px;
+}
+.manual__barcode input {
+  flex: 1;
+  width: 100%;
+}
+.manual__camera {
+  background: #edf4ff;
+  border: 1px solid #cfdfff;
+  border-radius: 8px;
+  color: #326cde;
+  cursor: pointer;
+  flex: 0 0 38px;
+  font-size: 1.2rem;
+}
+.manual__camera:hover {
+  background: #dfeaff;
 }
 .scanner-layer {
   align-items: center;
@@ -999,10 +1020,10 @@ footer {
   .manual__form {
     grid-template-columns: 1fr 1fr;
   }
-  .manual__form input:nth-child(2) {
+  .manual__form > input {
     grid-column: span 2;
   }
-  .manual__form button {
+  .manual__form > button {
     grid-column: span 2;
   }
   .scanner-layer {
