@@ -22,7 +22,12 @@ button {
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
-    transform 0.18s ease;
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
 }
 button:disabled,
 .is-disabled {
@@ -1058,6 +1063,7 @@ footer {
   margin-top: 42px;
   text-align: center;
 }
+
 @media (max-width: 860px) {
   .toolbar {
     flex-wrap: wrap;

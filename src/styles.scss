@@ -5,3 +5,52 @@ html {
 body {
   margin: 0;
 }
+
+/* App-wide entrance motion only animates opacity and transform. */
+app-root :is(.login-card, .admin-page, .hero, .metrics, .workspace) {
+  animation: page-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+app-root .metrics {
+  animation-delay: 40ms;
+}
+app-root .workspace {
+  animation-delay: 75ms;
+}
+app-root :is(.scan-bar, .notice) {
+  animation: surface-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+app-root .scanner-layer {
+  animation: overlay-enter 180ms ease-out both;
+}
+app-root :is(.scanner-modal, .registration-modal) {
+  animation: dialog-enter 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes surface-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  app-root *,
+  app-root *::before,
+  app-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
