@@ -65,33 +65,30 @@ export class InventoryRepository {
     return snapshot.exists() ? snapshot.data() as ProductMaster : null;
   }
 
-  async registerProduct(product: ProductDetails, quantity: number): Promise<boolean> {
+  async registerProduct(product: ProductDetails, quantity: number, now = new Date().toISOString()): Promise<boolean> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, product.barcode);
     const masterReference = doc(db, MASTER_COLLECTION, product.barcode);
-    const now = new Date().toISOString();
-
     return runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (snapshot.exists()) return false;
       const masterSnapshot = await transaction.get(masterReference);
-      const details = masterSnapshot.exists()
-        ? masterSnapshot.data() as ProductMaster
-        : product;
       const next: InventoryItem = {
-        barcode: details.barcode,
-        name: details.name,
+        barcode: product.barcode,
+        name: product.name,
         quantity,
-        imageUrl: details.imageUrl,
-        productUrl: details.productUrl,
-        source: details.source,
-        brand: details.brand,
-        storeName: details.storeName,
+        imageUrl: product.imageUrl,
+        productUrl: product.productUrl,
+        source: product.source,
+        brand: product.brand,
+        storeName: product.storeName,
         createdAt: now,
         updatedAt: now,
       };
       if (!masterSnapshot.exists()) {
         transaction.set(masterReference, { ...product, createdAt: now } satisfies ProductMaster);
+      } else if ((masterSnapshot.data() as ProductMaster).name !== product.name) {
+        transaction.update(masterReference, { name: product.name });
       }
       transaction.set(reference, next);
       return true;
@@ -112,6 +109,16 @@ export class InventoryRepository {
         quantity: Math.max(0, (item.quantity ?? 0) + difference),
         updatedAt: new Date().toISOString(),
       });
+    });
+  }
+
+  async setQuantity(barcode: string, quantity: number, updatedAt = new Date().toISOString()): Promise<void> {
+    const db = this.requireDatabase();
+    const reference = doc(db, COLLECTION_NAME, barcode);
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (!snapshot.exists()) throw new Error('対象の商品が見つかりません。');
+      transaction.update(reference, { quantity, updatedAt });
     });
   }
 

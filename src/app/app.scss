@@ -520,8 +520,7 @@ button:disabled,
   justify-content: space-between;
   margin-bottom: 19px;
 }
-.workspace h2,
-.manual h2 {
+.workspace h2 {
   color: #1f2b43;
   font-size: 1.35rem;
   letter-spacing: -0.035em;
@@ -564,7 +563,7 @@ button:disabled,
   align-items: center;
   display: grid;
   grid-template-columns:
-    minmax(280px, 2.3fr) minmax(120px, 0.9fr) minmax(125px, 0.8fr)
+    minmax(280px, 2.3fr) minmax(120px, 0.9fr) minmax(190px, 1.1fr)
     minmax(125px, 0.8fr);
 }
 .inventory-table__head {
@@ -659,14 +658,24 @@ button:disabled,
   background: #e6eefa;
   border-color: #a9c1f0;
 }
-.stock {
+.quantity-control__input {
   background: #e7faf0;
-  border-radius: 100px;
+  border: 1px solid #c6ebd8;
+  border-radius: 6px;
   color: #198456;
-  font-size: 0.75rem;
-  min-width: 29px;
-  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  height: 30px;
+  min-width: 0;
   text-align: center;
+  width: 54px;
+}
+.quantity-control .quantity-control__save {
+  color: #326cde;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 5px;
+  width: auto;
 }
 .stock--low {
   background: #fff5df;
@@ -704,54 +713,6 @@ button:disabled,
     opacity: 0.35;
     transform: scale(0.7);
   }
-}
-.manual {
-  align-items: center;
-  display: flex;
-  gap: 40px;
-  justify-content: space-between;
-  margin-top: 28px;
-  padding: 23px;
-}
-.manual__intro p:last-child {
-  color: #7d899c;
-  font-size: 0.8rem;
-  line-height: 1.6;
-  margin: 8px 0 0;
-}
-.manual__form {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(175px, 210px) minmax(180px, 1fr) auto;
-  min-width: 500px;
-}
-.manual__barcode {
-  display: flex;
-  gap: 5px;
-  min-width: 0;
-}
-.manual__form input {
-  border: 1px solid #dce3ed;
-  border-radius: 8px;
-  min-width: 0;
-  outline-color: #4b7eea;
-  padding: 10px;
-}
-.manual__barcode input {
-  flex: 1;
-  width: 100%;
-}
-.manual__camera {
-  background: #edf4ff;
-  border: 1px solid #cfdfff;
-  border-radius: 8px;
-  color: #326cde;
-  cursor: pointer;
-  flex: 0 0 38px;
-  font-size: 1.2rem;
-}
-.manual__camera:hover {
-  background: #dfeaff;
 }
 .scanner-layer {
   align-items: center;
@@ -828,8 +789,7 @@ button:disabled,
   font-weight: 700;
   margin-top: 8px;
 }
-.registration-modal__form input,
-.registration-modal__name {
+.registration-modal__form input {
   border: 1px solid #dce3ed;
   border-radius: 8px;
   font-size: 1rem;
@@ -839,9 +799,30 @@ button:disabled,
 .registration-modal__form input {
   outline-color: #4b7eea;
 }
-.registration-modal__name {
-  background: #fafbfd;
+.registration-modal__quantity {
+  display: flex;
+  gap: 8px;
+}
+.registration-modal__quantity input {
+  flex: 1;
+  text-align: center;
+}
+.registration-modal__quantity button {
+  background: #f3f6fa;
+  border: 1px solid #dce3ed;
+  border-radius: 8px;
   color: #24324b;
+  cursor: pointer;
+  font-size: 1.25rem;
+  min-height: 44px;
+  width: 48px;
+}
+.registration-modal__quantity button:hover:not(:disabled) {
+  background: #e6eefa;
+}
+.registration-modal__quantity button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 .registration-modal__error {
   color: #c74e56;
@@ -997,14 +978,6 @@ footer {
   .metrics {
     grid-template-columns: repeat(2, 1fr);
   }
-  .manual {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 20px;
-  }
-  .manual__form {
-    min-width: 0;
-  }
   .inventory-table {
     min-width: 700px;
   }
@@ -1091,15 +1064,6 @@ footer {
   .metric__icon {
     right: 12px;
     top: 12px;
-  }
-  .manual__form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .manual__form > input {
-    grid-column: span 2;
-  }
-  .manual__form > button {
-    grid-column: span 2;
   }
   .scanner-layer {
     padding: 12px;

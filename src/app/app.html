@@ -189,9 +189,9 @@
       </section>
 
       @if (scannerOpen()) {
-        <div class="scanner-layer" role="dialog" aria-modal="true" [attr.aria-label]="scannerMode() === 'manual' ? '手入力フォーム用JANコードスキャナー' : scannerMode() === 'delete' ? '商品削除用バーコードスキャナー' : '商品登録用バーコードスキャナー'">
+        <div class="scanner-layer" role="dialog" aria-modal="true" [attr.aria-label]="scannerMode() === 'delete' ? '商品削除用バーコードスキャナー' : '商品登録用バーコードスキャナー'">
           <div class="scanner-modal">
-            <p class="scanner-modal__mode">{{ scannerMode() === 'manual' ? '手入力する商品のJANコードを読み取ってください' : scannerMode() === 'delete' ? '削除する商品のバーコードを読み取ってください' : '登録する商品のバーコードを読み取ってください' }}</p>
+            <p class="scanner-modal__mode">{{ scannerMode() === 'delete' ? '削除する商品のバーコードを読み取ってください' : '登録する商品のバーコードを読み取ってください' }}</p>
             <app-barcode-scanner (detected)="barcodeDetected($event)" (close)="closeScanner()" />
           </div>
         </div>
@@ -209,13 +209,13 @@
             <p class="registration-modal__barcode">JANコード <strong>{{ candidate.product.barcode }}</strong></p>
             <form class="registration-modal__form" (ngSubmit)="confirmRegistration()">
               <label for="registration-name">商品名</label>
-              @if (candidate.needsName) {
-                <input id="registration-name" name="registrationName" [(ngModel)]="pendingName" autocomplete="off" placeholder="商品名を入力" required [disabled]="isRegistering()" />
-              } @else {
-                <strong class="registration-modal__name" id="registration-name">{{ candidate.product.name }}</strong>
-              }
+              <input id="registration-name" name="registrationName" [(ngModel)]="pendingName" autocomplete="off" placeholder="商品名を入力" required [disabled]="isRegistering()" />
               <label for="registration-quantity">在庫数</label>
-              <input id="registration-quantity" name="registrationQuantity" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="pendingQuantity" required [disabled]="isRegistering()" />
+              <div class="registration-modal__quantity">
+                <button type="button" aria-label="在庫数を1減らす" (click)="adjustPendingQuantity(-1)" [disabled]="isRegistering() || pendingQuantity === 0">−</button>
+                <input id="registration-quantity" name="registrationQuantity" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="pendingQuantity" required [disabled]="isRegistering()" />
+                <button type="button" aria-label="在庫数を1増やす" (click)="adjustPendingQuantity(1)" [disabled]="isRegistering() || pendingQuantity === 9007199254740991">＋</button>
+              </div>
               @if (registrationError(); as message) {
                 <p class="registration-modal__error" role="alert">{{ message }}</p>
               }
@@ -271,9 +271,12 @@
                   </div>
                   <span class="barcode">{{ item.barcode }}</span>
                   <div class="quantity-control">
-                    <button type="button" aria-label="在庫を 1 減らす" (click)="changeQuantity(item, -1)">−</button>
-                    <strong [class]="stockClass(item.quantity)">{{ item.quantity }}</strong>
-                    <button type="button" aria-label="在庫を 1 増やす" (click)="changeQuantity(item, 1)">＋</button>
+                    <button type="button" aria-label="在庫を 1 減らす" (click)="changeQuantity(item, -1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">−</button>
+                    <input class="quantity-control__input" [class.stock--low]="item.quantity > 0 && item.quantity <= 3" [class.stock--empty]="item.quantity === 0" type="number" min="0" step="1" inputmode="numeric" [attr.aria-label]="item.name + 'の在庫数'" [value]="quantityDrafts().get(item.barcode) ?? item.quantity" (input)="editQuantity(item.barcode, $any($event.target).value)" (keydown.enter)="saveQuantity(item)" (keydown.escape)="cancelQuantityEdit(item.barcode)" [disabled]="isRegistering() || savingQuantities().has(item.barcode)" />
+                    <button type="button" aria-label="在庫を 1 増やす" (click)="changeQuantity(item, 1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">＋</button>
+                    @if (quantityDrafts().has(item.barcode)) {
+                      <button class="quantity-control__save" type="button" [attr.aria-label]="item.name + 'の在庫数を保存'" (click)="saveQuantity(item)" [disabled]="isRegistering() || savingQuantities().has(item.barcode)">保存</button>
+                    }
                   </div>
                   <span class="updated">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
                 </div>
@@ -283,17 +286,6 @@
         </div>
       </section>
 
-      <section class="manual card">
-        <div class="manual__intro"><p class="overline">FALLBACK</p><h2>商品情報が見つからない場合</h2><p>Yahoo!ショッピングに掲載されていない商品も、手入力で在庫台帳へ追加できます。</p></div>
-        <form class="manual__form" (ngSubmit)="registerManualProduct()">
-          <div class="manual__barcode">
-            <input name="manualBarcode" [(ngModel)]="manualBarcode" placeholder="JANコード" inputmode="numeric" aria-label="JANコード" />
-            <button class="manual__camera" type="button" aria-label="カメラでJANコードを読み取る" title="カメラでJANコードを読み取る" (click)="openScanner('manual')" [disabled]="isRegistering()">📷</button>
-          </div>
-          <input name="manualName" [(ngModel)]="manualName" placeholder="商品名" />
-          <button class="outline-button" type="submit" [disabled]="isRegistering()">手入力で登録</button>
-        </form>
-      </section>
     }
     <footer>ZAiKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
   </main>

@@ -18,6 +18,7 @@ type Notice = { kind: 'success' | 'error' | 'info'; text: string };
 type Page = 'inventory' | 'admin';
 type ScannerMode = 'register' | 'delete';
 type RegistrationCandidate = { product: ProductDetails; needsName: boolean; fromMaster: boolean };
+type OptimisticInventoryChange = { item: InventoryItem | null; committed: boolean };
 
 @Component({
   imports: [CommonModule, FormsModule, DatePipe, BarcodeScannerComponent],
@@ -44,10 +45,23 @@ export class App implements OnDestroy {
   protected readonly approvedRequests = signal<AccessRequest[]>([]);
   protected readonly isReviewing = signal<string | null>(null);
   protected readonly isRemoving = signal<string | null>(null);
-  protected readonly items = signal<InventoryItem[]>([]);
+  private readonly syncedItems = signal<InventoryItem[]>([]);
+  private readonly optimisticChanges = signal<Map<string, OptimisticInventoryChange>>(new Map());
+  protected readonly quantityDrafts = signal<Map<string, string>>(new Map());
+  protected readonly savingQuantities = signal<Set<string>>(new Set());
+  protected readonly items = computed(() => {
+    const changes = this.optimisticChanges();
+    const synced = this.syncedItems();
+    if (!changes.size) return synced;
+    const optimisticItems: InventoryItem[] = [];
+    for (const change of changes.values()) {
+      if (change.item) optimisticItems.push(change.item);
+    }
+    return [...optimisticItems, ...synced.filter((item) => !changes.has(item.barcode))];
+  });
   protected readonly notice = signal<Notice | null>(null);
   protected readonly scannerOpen = signal(false);
-  protected readonly scannerMode = signal<ScannerMode | 'manual'>('register');
+  protected readonly scannerMode = signal<ScannerMode>('register');
   protected readonly expandedAction = signal<ScannerMode | null>(null);
   protected readonly janEntryMode = signal<ScannerMode | null>(null);
   protected readonly pendingProduct = signal<RegistrationCandidate | null>(null);
@@ -66,8 +80,6 @@ export class App implements OnDestroy {
   });
   protected search = '';
   protected barcodeInput = '';
-  protected manualBarcode = '';
-  protected manualName = '';
   protected pendingName = '';
   protected pendingQuantity: number | null = 1;
 
@@ -120,7 +132,7 @@ export class App implements OnDestroy {
     this.janEntryMode.set(null);
   }
 
-  protected openScanner(mode: ScannerMode | 'manual'): void {
+  protected openScanner(mode: ScannerMode): void {
     if (!this.ensureInventoryAccess()) return;
     this.scannerMode.set(mode);
     this.scannerOpen.set(true);
@@ -140,16 +152,6 @@ export class App implements OnDestroy {
 
   protected async barcodeDetected(barcode: string): Promise<void> {
     this.scannerOpen.set(false);
-    if (this.scannerMode() === 'manual') {
-      const janCode = this.cleanBarcode(barcode);
-      if (!janCode) {
-        this.showNotice('error', 'JANコードを読み取れませんでした。もう一度お試しください。');
-        return;
-      }
-      this.manualBarcode = janCode;
-      this.showNotice('info', 'JANコードを入力しました。商品名を入力して登録してください。');
-      return;
-    }
     if (this.scannerMode() === 'delete') {
       await this.deleteFromBarcode(barcode);
       return;
@@ -165,24 +167,22 @@ export class App implements OnDestroy {
     await this.prepareRegistration(this.barcodeInput);
   }
 
-  protected async registerManualProduct(): Promise<void> {
-    const barcode = this.cleanBarcode(this.manualBarcode);
-    if (!barcode) {
-      this.showNotice('error', 'JANコードを入力してください。');
-      return;
-    }
-    await this.prepareRegistration(barcode, this.manualName.trim());
-  }
-
   protected closeRegistrationDialog(): void {
     if (this.isRegistering()) return;
     this.pendingProduct.set(null);
   }
 
+  protected adjustPendingQuantity(difference: number): void {
+    const current = this.pendingQuantity;
+    const quantity = current !== null && Number.isSafeInteger(current) && current >= 0 ? current : 0;
+    this.pendingQuantity = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, quantity + difference));
+    this.registrationError.set(null);
+  }
+
   protected async confirmRegistration(): Promise<void> {
     const candidate = this.pendingProduct();
     if (!candidate || this.isRegistering() || !this.ensureInventoryAccess()) return;
-    const name = candidate.needsName ? this.pendingName.trim() : candidate.product.name;
+    const name = this.pendingName.trim();
     if (!name) {
       this.registrationError.set('商品名を入力してください。');
       return;
@@ -193,20 +193,32 @@ export class App implements OnDestroy {
       return;
     }
     this.registrationError.set(null);
+    const now = new Date().toISOString();
+    const item: InventoryItem = {
+      ...candidate.product,
+      name,
+      quantity,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.setOptimisticChange(item.barcode, { item, committed: false });
+    this.pendingProduct.set(null);
     this.isRegistering.set(true);
+    this.showNotice('info', '商品を登録しています…');
     try {
-      const isNew = await this.inventory.registerProduct({ ...candidate.product, name }, quantity);
+      const isNew = await this.inventory.registerProduct({ ...candidate.product, name }, quantity, now);
       if (!isNew) {
-        this.pendingProduct.set(null);
+        this.setOptimisticChange(item.barcode, null);
         this.showNotice('info', 'すでにその商品は登録されています。');
         return;
       }
-      this.pendingProduct.set(null);
+      this.commitOptimisticChange(item.barcode);
       this.barcodeInput = '';
-      this.manualBarcode = '';
-      this.manualName = '';
       this.showNotice('success', `JAN ${candidate.product.barcode} を在庫 ${quantity} で登録しました。`);
     } catch (error) {
+      this.setOptimisticChange(item.barcode, null);
+      this.pendingProduct.set(candidate);
+      this.notice.set(null);
       this.registrationError.set(this.errorMessage(error));
     } finally {
       this.isRegistering.set(false);
@@ -214,7 +226,7 @@ export class App implements OnDestroy {
   }
 
   protected async changeQuantity(item: InventoryItem, difference: number): Promise<void> {
-    if (!this.ensureInventoryAccess()) return;
+    if (this.quantityDrafts().has(item.barcode) || this.savingQuantities().has(item.barcode) || !this.ensureInventoryAccess()) return;
     try {
       await this.inventory.changeQuantity(item.barcode, difference);
     } catch (error) {
@@ -222,10 +234,49 @@ export class App implements OnDestroy {
     }
   }
 
-  protected stockClass(quantity: number): string {
-    if (quantity === 0) return 'stock stock--empty';
-    if (quantity <= 3) return 'stock stock--low';
-    return 'stock';
+  protected editQuantity(barcode: string, value: string): void {
+    this.quantityDrafts.update((current) => new Map(current).set(barcode, value));
+  }
+
+  protected cancelQuantityEdit(barcode: string): void {
+    this.quantityDrafts.update((current) => {
+      const next = new Map(current);
+      next.delete(barcode);
+      return next;
+    });
+  }
+
+  protected async saveQuantity(item: InventoryItem): Promise<void> {
+    const barcode = item.barcode;
+    const draft = this.quantityDrafts().get(barcode);
+    if (draft === undefined || this.isRegistering() || this.savingQuantities().has(barcode) || !this.ensureInventoryAccess()) return;
+    const quantity = Number(draft);
+    if (!draft.trim() || !Number.isSafeInteger(quantity) || quantity < 0) {
+      this.showNotice('error', '在庫数は0以上の整数で入力してください。');
+      return;
+    }
+    if (quantity === item.quantity) {
+      this.cancelQuantityEdit(barcode);
+      return;
+    }
+    this.savingQuantities.update((current) => new Set(current).add(barcode));
+    const updatedAt = new Date().toISOString();
+    this.setOptimisticChange(barcode, { item: { ...item, quantity, updatedAt }, committed: false });
+    try {
+      await this.inventory.setQuantity(barcode, quantity, updatedAt);
+      this.commitOptimisticChange(barcode);
+      this.cancelQuantityEdit(barcode);
+      this.showNotice('success', `「${item.name}」の在庫数を ${quantity} に変更しました。`);
+    } catch (error) {
+      this.setOptimisticChange(barcode, null);
+      this.showNotice('error', this.errorMessage(error));
+    } finally {
+      this.savingQuantities.update((current) => {
+        const next = new Set(current);
+        next.delete(barcode);
+        return next;
+      });
+    }
   }
 
   protected isDeveloper(): boolean {
@@ -293,7 +344,10 @@ export class App implements OnDestroy {
     this.stopAccessWatching?.();
     this.stopWatching?.();
     this.stopWatching = undefined;
-    this.items.set([]);
+    this.syncedItems.set([]);
+    this.optimisticChanges.set(new Map());
+    this.quantityDrafts.set(new Map());
+    this.savingQuantities.set(new Set());
     this.clearAccessCheckTimeout();
     this.accessStatus.set('loading');
     this.accessCheckTimeout = setTimeout(() => {
@@ -313,7 +367,10 @@ export class App implements OnDestroy {
         }
         this.stopWatching?.();
         this.stopWatching = undefined;
-        this.items.set([]);
+        this.syncedItems.set([]);
+        this.optimisticChanges.set(new Map());
+        this.quantityDrafts.set(new Map());
+        this.savingQuantities.set(new Set());
         this.isLoading.set(false);
       },
       (error) => {
@@ -330,7 +387,8 @@ export class App implements OnDestroy {
     this.isLoading.set(true);
     this.stopWatching = this.inventory.watch(
       (items) => {
-        this.items.set(items);
+        this.syncedItems.set(items);
+        this.clearSyncedOptimisticChanges(items);
         this.isLoading.set(false);
       },
       (error) => {
@@ -365,7 +423,10 @@ export class App implements OnDestroy {
     this.stopAccessWatching = undefined;
     this.stopAccessRequests?.();
     this.stopAccessRequests = undefined;
-    this.items.set([]);
+    this.syncedItems.set([]);
+    this.optimisticChanges.set(new Map());
+    this.quantityDrafts.set(new Map());
+    this.savingQuantities.set(new Set());
     this.pendingRequests.set([]);
     this.approvedRequests.set([]);
     this.activePage.set('inventory');
@@ -383,7 +444,7 @@ export class App implements OnDestroy {
     this.accessCheckTimeout = undefined;
   }
 
-  private async prepareRegistration(rawBarcode: string, manualName?: string): Promise<void> {
+  private async prepareRegistration(rawBarcode: string): Promise<void> {
     const barcode = this.cleanBarcode(rawBarcode);
     if (!barcode) {
       this.showNotice('error', 'JANコードを入力または読み取ってください。');
@@ -392,18 +453,22 @@ export class App implements OnDestroy {
     if (this.isRegistering() || !this.ensureInventoryAccess()) return;
 
     this.isRegistering.set(true);
+    this.showNotice('info', `JAN ${barcode} の登録情報を確認しています…`);
     try {
-      if (await this.inventory.getInventoryItem(barcode)) {
+      if (this.items().some((item) => item.barcode === barcode)) {
         this.showNotice('info', 'すでにその商品は登録されています。');
         return;
       }
-      const master = await this.inventory.getMasterProduct(barcode);
-      if (master) {
-        this.openRegistrationDialog(master, false, true);
+      const [existingItem, master] = await Promise.all([
+        this.inventory.getInventoryItem(barcode),
+        this.inventory.getMasterProduct(barcode),
+      ]);
+      if (existingItem) {
+        this.showNotice('info', 'すでにその商品は登録されています。');
         return;
       }
-      if (manualName !== undefined) {
-        this.openRegistrationDialog(this.manualProduct(barcode, manualName), true, false);
+      if (master) {
+        this.openRegistrationDialog(master, false, true);
         return;
       }
       this.showNotice('info', `JAN ${barcode} の商品情報を検索しています…`);
@@ -418,7 +483,6 @@ export class App implements OnDestroy {
       if (product) {
         this.openRegistrationDialog(product, false, false);
       } else {
-        this.manualBarcode = barcode;
         this.openRegistrationDialog(this.manualProduct(barcode, ''), true, false);
         this.showNotice('info', searchFailed
           ? '商品情報を取得できませんでした。商品名を入力して登録できます。'
@@ -432,7 +496,7 @@ export class App implements OnDestroy {
   }
 
   private openRegistrationDialog(product: ProductDetails, needsName: boolean, fromMaster: boolean): void {
-    this.pendingName = needsName ? product.name : '';
+    this.pendingName = product.name;
     this.pendingQuantity = 1;
     this.registrationError.set(null);
     this.notice.set(null);
@@ -449,18 +513,61 @@ export class App implements OnDestroy {
       this.showNotice('error', '読み取ったバーコードが空です。');
       return;
     }
-    if (!this.ensureInventoryAccess()) return;
+    if (this.isRegistering() || !this.ensureInventoryAccess()) return;
 
+    const currentItem = this.items().find((item) => item.barcode === barcode);
+    if (currentItem) this.setOptimisticChange(barcode, { item: null, committed: false });
     this.isRegistering.set(true);
+    this.showNotice('info', `JAN ${barcode} の商品を削除しています…`);
     try {
       await this.inventory.deleteProduct(barcode);
+      if (currentItem) this.commitOptimisticChange(barcode);
       this.barcodeInput = '';
       this.showNotice('success', `JAN ${barcode} の商品を削除しました。`);
     } catch (error) {
+      if (currentItem) this.setOptimisticChange(barcode, null);
       this.showNotice('error', this.errorMessage(error));
     } finally {
       this.isRegistering.set(false);
     }
+  }
+
+  private setOptimisticChange(barcode: string, change: OptimisticInventoryChange | null): void {
+    this.optimisticChanges.update((current) => {
+      const next = new Map(current);
+      if (change) next.set(barcode, change);
+      else next.delete(barcode);
+      return next;
+    });
+  }
+
+  private commitOptimisticChange(barcode: string): void {
+    const change = this.optimisticChanges().get(barcode);
+    if (!change) return;
+    const serverItem = this.syncedItems().find((item) => item.barcode === barcode);
+    if (this.hasSyncedChange(change, serverItem)) {
+      this.setOptimisticChange(barcode, null);
+    } else {
+      this.setOptimisticChange(barcode, { ...change, committed: true });
+    }
+  }
+
+  private clearSyncedOptimisticChanges(items: InventoryItem[]): void {
+    const current = this.optimisticChanges();
+    if (!current.size) return;
+    const next = new Map(current);
+    for (const [barcode, change] of current) {
+      if (change.committed && this.hasSyncedChange(change, items.find((item) => item.barcode === barcode))) {
+        next.delete(barcode);
+      }
+    }
+    if (next.size !== current.size) this.optimisticChanges.set(next);
+  }
+
+  private hasSyncedChange(change: OptimisticInventoryChange, serverItem: InventoryItem | undefined): boolean {
+    return change.item
+      ? serverItem?.updatedAt === change.item.updatedAt && serverItem.quantity === change.item.quantity
+      : serverItem === undefined;
   }
 
   private ensureInventoryAccess(): boolean {

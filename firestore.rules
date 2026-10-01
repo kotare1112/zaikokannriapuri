@@ -81,8 +81,12 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.source in ['manual', 'yahoo-shopping'];
-      // 在庫から削除しても、登録済みの商品情報は残す。
-      allow update, delete: if false;
+      // 登録時に編集した商品名だけ更新できる。削除後も商品情報は残す。
+      allow update: if canUseInventory()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+      allow delete: if false;
     }
   }
 }
