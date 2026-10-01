@@ -252,7 +252,11 @@
       <section class="workspace">
         <div class="workspace__heading"><div><p class="overline">INVENTORY LIST</p><h2>現在の在庫</h2></div></div>
         <div class="toolbar">
-          <label class="search-field"><span>⌕</span><input [ngModel]="search()" (ngModelChange)="search.set($event)" name="search" type="search" placeholder="商品名・JANコード・ブランドで検索" /></label>
+          <form class="search-field" (ngSubmit)="submitSearch()" role="search">
+            <span aria-hidden="true">⌕</span>
+            <input [(ngModel)]="searchInput" name="search" type="search" aria-label="在庫の商品名・JANコード・ブランドを検索" placeholder="商品名・JANコード・ブランドで検索" />
+            <button class="search-submit" type="submit" aria-label="検索する" title="検索する"><span class="search-submit__triangle" aria-hidden="true"></span></button>
+          </form>
           <div class="toolbar__controls">
             <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
             <label class="sort-field">並び替え

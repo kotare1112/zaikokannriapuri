@@ -82,6 +82,7 @@ export class App implements OnDestroy {
     this.resetSignedOutSession();
   });
   protected readonly search = signal('');
+  protected searchInput = '';
   protected readonly sortField = signal<SortField>('updatedAt');
   protected readonly sortDirection = signal<SortDirection>('desc');
   protected barcodeInput = '';
@@ -112,6 +113,10 @@ export class App implements OnDestroy {
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
+
+  protected submitSearch(): void {
+    this.search.set(this.searchInput);
+  }
 
   protected setSortField(field: SortField): void {
     this.sortField.set(field);
