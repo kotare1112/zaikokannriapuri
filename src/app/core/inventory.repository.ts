@@ -6,6 +6,7 @@ import {
   doc,
   getDoc,
   getFirestore,
+  getDocsFromServer,
   onSnapshot,
   orderBy,
   query,
@@ -36,7 +37,7 @@ export class InventoryRepository {
     return 'src/environments/environment.ts に Firebase の Web 設定を入力してください。';
   }
 
-  watch(next: (items: InventoryItem[]) => void, onError: (error: Error) => void): Unsubscribe {
+  watch(next: (items: InventoryItem[], fromServer: boolean) => void, onError: (error: Error) => void): Unsubscribe {
     if (!this.db) {
       onError(new Error(this.configurationMessage()));
       return () => undefined;
@@ -46,11 +47,22 @@ export class InventoryRepository {
 
     return onSnapshot(
       itemsQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
-        next(snapshot.docs.map((item) => item.data() as InventoryItem));
+        next(
+          snapshot.docs.map((item) => item.data() as InventoryItem),
+          !snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites,
+        );
       },
       (error) => onError(error),
     );
+  }
+
+  async refresh(): Promise<InventoryItem[]> {
+    const db = this.requireDatabase();
+    const itemsQuery = query(collection(db, COLLECTION_NAME), orderBy('updatedAt', 'desc'));
+    const snapshot = await getDocsFromServer(itemsQuery);
+    return snapshot.docs.map((item) => item.data() as InventoryItem);
   }
 
   async getInventoryItem(barcode: string): Promise<InventoryItem | null> {
@@ -70,9 +82,11 @@ export class InventoryRepository {
     const reference = doc(db, COLLECTION_NAME, product.barcode);
     const masterReference = doc(db, MASTER_COLLECTION, product.barcode);
     return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(reference);
+      const [snapshot, masterSnapshot] = await Promise.all([
+        transaction.get(reference),
+        transaction.get(masterReference),
+      ]);
       if (snapshot.exists()) return false;
-      const masterSnapshot = await transaction.get(masterReference);
       const next: InventoryItem = {
         barcode: product.barcode,
         name: product.name,
@@ -128,9 +142,11 @@ export class InventoryRepository {
     const masterReference = doc(db, MASTER_COLLECTION, barcode);
 
     await runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(reference);
+      const [snapshot, masterSnapshot] = await Promise.all([
+        transaction.get(reference),
+        transaction.get(masterReference),
+      ]);
       if (!snapshot.exists()) throw new Error('削除する商品が見つかりません。');
-      const masterSnapshot = await transaction.get(masterReference);
       if (!masterSnapshot.exists()) {
         const item = snapshot.data() as InventoryItem;
         const { barcode: itemBarcode, name, imageUrl, productUrl, source, brand, storeName } = item;

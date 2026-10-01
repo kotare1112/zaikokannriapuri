@@ -34,10 +34,17 @@ export class App implements OnDestroy {
   private readonly inventory = inject(InventoryRepository);
   private readonly yahooShopping = inject(YahooShoppingService);
   private readonly japaneseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
+  private readonly readingCache = new Map<string, string>();
+  private searchRequestId = 0;
   private stopWatching?: () => void;
   private stopAccessWatching?: () => void;
   private stopAccessRequests?: () => void;
   private accessCheckTimeout?: ReturnType<typeof setTimeout>;
+  private inventoryRevision = 0;
+  private isRefreshingInventory = false;
+  private readonly refreshOnVisible = (): void => {
+    if (document.visibilityState === 'visible') void this.refreshInventoryFromServer();
+  };
 
   protected readonly user = this.auth.user;
   protected readonly authLoading = this.auth.loading;
@@ -82,6 +89,8 @@ export class App implements OnDestroy {
     this.resetSignedOutSession();
   });
   protected readonly search = signal('');
+  protected readonly searchReading = signal('');
+  protected readonly isReadingSearchLoading = signal(false);
   protected searchInput = '';
   protected readonly sortField = signal<SortField>('updatedAt');
   protected readonly sortDirection = signal<SortDirection>('desc');
@@ -90,16 +99,18 @@ export class App implements OnDestroy {
   protected pendingQuantity: number | null = 1;
 
   protected readonly filteredItems = computed(() => {
-    const keyword = this.search().trim().toLowerCase();
+    const keywords = [this.search(), this.searchReading()]
+      .map((value) => this.normalizeSearchText(value))
+      .filter(Boolean);
     const field = this.sortField();
     const direction = this.sortDirection() === 'asc' ? 1 : -1;
-    const matching = keyword
-      ? this.items().filter((item) =>
-          [item.name, item.barcode, item.brand, item.storeName]
-            .join(' ')
-            .toLowerCase()
-            .includes(keyword),
-        )
+    const matching = keywords.length
+      ? this.items().filter((item) => {
+          const text = this.normalizeSearchText(
+            [item.name, item.barcode, item.brand, item.storeName].join(' '),
+          );
+          return keywords.some((keyword) => text.includes(keyword));
+        })
       : [...this.items()];
     return matching.sort((first, second) => {
       const comparison = field === 'quantity'
@@ -114,8 +125,42 @@ export class App implements OnDestroy {
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
 
-  protected submitSearch(): void {
-    this.search.set(this.searchInput);
+  constructor() {
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.refreshOnVisible);
+    if (typeof window !== 'undefined') window.addEventListener('pageshow', this.refreshOnVisible);
+  }
+
+  protected async submitSearch(): Promise<void> {
+    const query = this.searchInput.trim();
+    const requestId = ++this.searchRequestId;
+    this.search.set(query);
+    this.searchReading.set('');
+    this.isReadingSearchLoading.set(false);
+    if (!/\p{Script=Han}/u.test(query)) return;
+    const cachedReading = this.readingCache.get(query);
+    if (cachedReading !== undefined) {
+      this.searchReading.set(cachedReading);
+      return;
+    }
+
+    this.isReadingSearchLoading.set(true);
+    try {
+      const reading = await firstValueFrom(this.yahooShopping.readingForSearch(query));
+      this.readingCache.set(query, reading);
+      if (requestId === this.searchRequestId) this.searchReading.set(reading);
+    } catch {
+      if (requestId === this.searchRequestId) {
+        this.showNotice('info', '漢字の読みを取得できなかったため、通常の文字検索結果を表示しています。');
+      }
+    } finally {
+      if (requestId === this.searchRequestId) this.isReadingSearchLoading.set(false);
+    }
+  }
+
+  private normalizeSearchText(value: string): string {
+    return value.normalize('NFKC').toLowerCase()
+      .replace(/[\u30a1-\u30f6]/gu, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60))
+      .replace(/\s+/gu, '');
   }
 
   protected setSortField(field: SortField): void {
@@ -132,6 +177,8 @@ export class App implements OnDestroy {
     this.stopAccessRequests?.();
     this.authStateEffect.destroy();
     this.clearAccessCheckTimeout();
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.refreshOnVisible);
+    if (typeof window !== 'undefined') window.removeEventListener('pageshow', this.refreshOnVisible);
   }
 
   protected async signIn(): Promise<void> {
@@ -234,7 +281,7 @@ export class App implements OnDestroy {
     this.setOptimisticChange(item.barcode, { item, committed: false });
     this.pendingProduct.set(null);
     this.isRegistering.set(true);
-    this.showNotice('info', '商品を登録しています…');
+    this.showNotice('info', '在庫一覧に反映しました。保存を確認しています…');
     try {
       const isNew = await this.inventory.registerProduct({ ...candidate.product, name }, quantity, now);
       if (!isNew) {
@@ -416,7 +463,8 @@ export class App implements OnDestroy {
     if (this.stopWatching) return;
     this.isLoading.set(true);
     this.stopWatching = this.inventory.watch(
-      (items) => {
+      (items, fromServer) => {
+        if (fromServer) this.inventoryRevision += 1;
         this.syncedItems.set(items);
         this.clearSyncedOptimisticChanges(items);
         this.isLoading.set(false);
@@ -426,6 +474,25 @@ export class App implements OnDestroy {
         this.showNotice('error', this.errorMessage(error));
       },
     );
+  }
+
+  private async refreshInventoryFromServer(): Promise<void> {
+    const userId = this.user()?.uid;
+    if (!userId || !this.stopWatching || this.isRefreshingInventory) return;
+    this.isRefreshingInventory = true;
+    const revision = this.inventoryRevision;
+    try {
+      const items = await this.inventory.refresh();
+      if (this.user()?.uid !== userId || !this.stopWatching || this.inventoryRevision !== revision) return;
+      this.inventoryRevision += 1;
+      this.syncedItems.set(items);
+      this.clearSyncedOptimisticChanges(items);
+      this.isLoading.set(false);
+    } catch {
+      // 通信が一時的に使えない場合は、現在表示中の在庫を保持する。
+    } finally {
+      this.isRefreshingInventory = false;
+    }
   }
 
   private watchAccessRequests(): void {
@@ -545,17 +612,16 @@ export class App implements OnDestroy {
     }
     if (this.isRegistering() || !this.ensureInventoryAccess()) return;
 
-    const currentItem = this.items().find((item) => item.barcode === barcode);
-    if (currentItem) this.setOptimisticChange(barcode, { item: null, committed: false });
+    this.setOptimisticChange(barcode, { item: null, committed: false });
     this.isRegistering.set(true);
-    this.showNotice('info', `JAN ${barcode} の商品を削除しています…`);
+    this.showNotice('info', `JAN ${barcode} を在庫一覧から削除しました。保存を確認しています…`);
     try {
       await this.inventory.deleteProduct(barcode);
-      if (currentItem) this.commitOptimisticChange(barcode);
+      this.commitOptimisticChange(barcode);
       this.barcodeInput = '';
       this.showNotice('success', `JAN ${barcode} の商品を削除しました。`);
     } catch (error) {
-      if (currentItem) this.setOptimisticChange(barcode, null);
+      this.setOptimisticChange(barcode, null);
       this.showNotice('error', this.errorMessage(error));
     } finally {
       this.isRegistering.set(false);

@@ -617,6 +617,12 @@ button:disabled,
 .table-card {
   overflow: hidden;
 }
+.inventory-loading-note {
+  color: #738096;
+  font-size: 0.76rem;
+  margin: 0;
+  padding: 12px 21px;
+}
 .inventory-table__head,
 .inventory-table__row {
   align-items: center;

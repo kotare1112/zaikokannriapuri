@@ -17,6 +17,10 @@
     "api/yahoo-item-search.ts": {
       "maxDuration": 10,
       "regions": ["hnd1"]
+    },
+    "api/yahoo-furigana.ts": {
+      "maxDuration": 10,
+      "regions": ["hnd1"]
     }
   }
 }

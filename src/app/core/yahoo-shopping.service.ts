@@ -20,6 +20,12 @@ interface YahooHit {
 export class YahooShoppingService {
   private readonly http = inject(HttpClient);
 
+  readingForSearch(query: string): Observable<string> {
+    return this.http.get<{ reading: string }>('/api/yahoo-furigana', {
+      params: new HttpParams().set('q', query),
+    }).pipe(map((response) => response.reading));
+  }
+
   searchByBarcode(barcode: string): Observable<CatalogProduct[]> {
     const endpoint = environment.yahooShopping.proxyUrl.trim();
     if (!endpoint) {

@@ -258,7 +258,7 @@
             <button class="search-submit" type="submit" aria-label="検索する" title="検索する"><span class="search-submit__triangle" aria-hidden="true"></span></button>
           </form>
           <div class="toolbar__controls">
-            <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
+            <span class="toolbar__count">{{ filteredItems().length }} 件を表示{{ isReadingSearchLoading() ? '・漢字の読みを確認中…' : '' }}</span>
             <label class="sort-field">並び替え
               <select [ngModel]="sortField()" (ngModelChange)="setSortField($event)" name="sortField">
                 <option value="updatedAt">更新日時</option>
@@ -271,11 +271,16 @@
           </div>
         </div>
         <div class="table-card card">
-          @if (isLoading()) {
+          @if (isLoading() && !items().length) {
             <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
+          } @else if (isReadingSearchLoading() && !filteredItems().length) {
+            <div class="empty-state"><span class="loading-dot"></span> 漢字の読みを確認しています…</div>
           } @else if (!filteredItems().length) {
             <div class="empty-state"><strong>{{ items().length ? '該当する商品がありません' : 'まだ商品が登録されていません' }}</strong><p>{{ items().length ? '検索条件を変えてみてください。' : '商品を登録して始めましょう。' }}</p></div>
           } @else {
+            @if (isLoading()) {
+              <p class="inventory-loading-note">ほかの在庫を読み込んでいます…</p>
+            }
             <div class="inventory-table" role="table">
               <div class="inventory-table__head" role="row"><span>商品</span><span>JAN コード</span><span>在庫数</span><span>更新日時</span></div>
               @for (item of filteredItems(); track item.barcode) {
