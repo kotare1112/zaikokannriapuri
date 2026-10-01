@@ -4,6 +4,7 @@ import {
   Unsubscribe,
   collection,
   doc,
+  getDoc,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -12,9 +13,10 @@ import {
 } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { environment } from '../../environments/environment';
-import { CatalogProduct, InventoryItem } from '../models/inventory-item';
+import { InventoryItem, ProductDetails, ProductMaster } from '../models/inventory-item';
 
 const COLLECTION_NAME = 'inventoryItems';
+const MASTER_COLLECTION = 'productMasters';
 
 @Injectable({ providedIn: 'root' })
 export class InventoryRepository {
@@ -51,54 +53,47 @@ export class InventoryRepository {
     );
   }
 
-  async registerCatalogProduct(product: CatalogProduct): Promise<boolean> {
+  async getInventoryItem(barcode: string): Promise<InventoryItem | null> {
+    const db = this.requireDatabase();
+    const snapshot = await getDoc(doc(db, COLLECTION_NAME, barcode));
+    return snapshot.exists() ? snapshot.data() as InventoryItem : null;
+  }
+
+  async getMasterProduct(barcode: string): Promise<ProductMaster | null> {
+    const db = this.requireDatabase();
+    const snapshot = await getDoc(doc(db, MASTER_COLLECTION, barcode));
+    return snapshot.exists() ? snapshot.data() as ProductMaster : null;
+  }
+
+  async registerProduct(product: ProductDetails, quantity: number): Promise<boolean> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, product.barcode);
+    const masterReference = doc(db, MASTER_COLLECTION, product.barcode);
     const now = new Date().toISOString();
 
     return runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (snapshot.exists()) return false;
+      const masterSnapshot = await transaction.get(masterReference);
+      const details = masterSnapshot.exists()
+        ? masterSnapshot.data() as ProductMaster
+        : product;
       const next: InventoryItem = {
-        barcode: product.barcode,
-        name: product.name,
-        quantity: 0,
-        imageUrl: product.imageUrl,
-        productUrl: product.productUrl,
-        source: 'yahoo-shopping',
-        brand: product.brand,
-        storeName: product.storeName,
+        barcode: details.barcode,
+        name: details.name,
+        quantity,
+        imageUrl: details.imageUrl,
+        productUrl: details.productUrl,
+        source: details.source,
+        brand: details.brand,
+        storeName: details.storeName,
         createdAt: now,
         updatedAt: now,
       };
+      if (!masterSnapshot.exists()) {
+        transaction.set(masterReference, { ...product, createdAt: now } satisfies ProductMaster);
+      }
       transaction.set(reference, next);
-      return true;
-    });
-  }
-
-  async registerManualProduct(
-    barcode: string,
-    name: string,
-  ): Promise<boolean> {
-    const db = this.requireDatabase();
-    const reference = doc(db, COLLECTION_NAME, barcode);
-    const now = new Date().toISOString();
-
-    return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(reference);
-      if (snapshot.exists()) return false;
-      transaction.set(reference, {
-        barcode,
-        name,
-        quantity: 0,
-        imageUrl: '',
-        productUrl: '',
-        source: 'manual',
-        brand: '',
-        storeName: '',
-        createdAt: now,
-        updatedAt: now,
-      } satisfies InventoryItem);
       return true;
     });
   }
@@ -123,10 +118,26 @@ export class InventoryRepository {
   async deleteProduct(barcode: string): Promise<void> {
     const db = this.requireDatabase();
     const reference = doc(db, COLLECTION_NAME, barcode);
+    const masterReference = doc(db, MASTER_COLLECTION, barcode);
 
     await runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (!snapshot.exists()) throw new Error('削除する商品が見つかりません。');
+      const masterSnapshot = await transaction.get(masterReference);
+      if (!masterSnapshot.exists()) {
+        const item = snapshot.data() as InventoryItem;
+        const { barcode: itemBarcode, name, imageUrl, productUrl, source, brand, storeName } = item;
+        transaction.set(masterReference, {
+          barcode: itemBarcode,
+          name,
+          imageUrl: imageUrl ?? '',
+          productUrl: productUrl ?? '',
+          source: source ?? 'manual',
+          brand: brand ?? '',
+          storeName: storeName ?? '',
+          createdAt: item.createdAt ?? new Date().toISOString(),
+        } satisfies ProductMaster);
+      }
       transaction.delete(reference);
     });
   }

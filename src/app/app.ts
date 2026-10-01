@@ -12,11 +12,12 @@ import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
 import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scanner';
-import { InventoryItem } from './models/inventory-item';
+import { InventoryItem, ProductDetails } from './models/inventory-item';
 
 type Notice = { kind: 'success' | 'error' | 'info'; text: string };
 type Page = 'inventory' | 'admin';
 type ScannerMode = 'register' | 'delete';
+type RegistrationCandidate = { product: ProductDetails; needsName: boolean; fromMaster: boolean };
 
 @Component({
   imports: [CommonModule, FormsModule, DatePipe, BarcodeScannerComponent],
@@ -49,6 +50,8 @@ export class App implements OnDestroy {
   protected readonly scannerMode = signal<ScannerMode | 'manual'>('register');
   protected readonly expandedAction = signal<ScannerMode | null>(null);
   protected readonly janEntryMode = signal<ScannerMode | null>(null);
+  protected readonly pendingProduct = signal<RegistrationCandidate | null>(null);
+  protected readonly registrationError = signal<string | null>(null);
   protected readonly isRegistering = signal(false);
   protected readonly isLoading = signal(true);
   protected readonly isSigningIn = signal(false);
@@ -65,6 +68,8 @@ export class App implements OnDestroy {
   protected barcodeInput = '';
   protected manualBarcode = '';
   protected manualName = '';
+  protected pendingName = '';
+  protected pendingQuantity: number | null = 1;
 
   protected readonly filteredItems = computed(() => {
     const keyword = this.search.trim().toLowerCase();
@@ -149,7 +154,7 @@ export class App implements OnDestroy {
       await this.deleteFromBarcode(barcode);
       return;
     }
-    await this.registerFromBarcode(barcode);
+    await this.prepareRegistration(barcode);
   }
 
   protected async submitBarcode(): Promise<void> {
@@ -157,29 +162,52 @@ export class App implements OnDestroy {
       await this.deleteFromBarcode(this.barcodeInput);
       return;
     }
-    await this.registerFromBarcode(this.barcodeInput);
+    await this.prepareRegistration(this.barcodeInput);
   }
 
   protected async registerManualProduct(): Promise<void> {
     const barcode = this.cleanBarcode(this.manualBarcode);
-    if (!barcode || !this.manualName.trim()) {
-      this.showNotice('error', 'バーコードと商品名を入力してください。');
+    if (!barcode) {
+      this.showNotice('error', 'JANコードを入力してください。');
       return;
     }
-    if (!this.ensureInventoryAccess()) return;
+    await this.prepareRegistration(barcode, this.manualName.trim());
+  }
 
+  protected closeRegistrationDialog(): void {
+    if (this.isRegistering()) return;
+    this.pendingProduct.set(null);
+  }
+
+  protected async confirmRegistration(): Promise<void> {
+    const candidate = this.pendingProduct();
+    if (!candidate || this.isRegistering() || !this.ensureInventoryAccess()) return;
+    const name = candidate.needsName ? this.pendingName.trim() : candidate.product.name;
+    if (!name) {
+      this.registrationError.set('商品名を入力してください。');
+      return;
+    }
+    const quantity = this.pendingQuantity;
+    if (quantity === null || !Number.isSafeInteger(quantity) || quantity < 0) {
+      this.registrationError.set('在庫数は0以上の整数で入力してください。');
+      return;
+    }
+    this.registrationError.set(null);
     this.isRegistering.set(true);
     try {
-      const isNew = await this.inventory.registerManualProduct(barcode, this.manualName.trim());
+      const isNew = await this.inventory.registerProduct({ ...candidate.product, name }, quantity);
       if (!isNew) {
+        this.pendingProduct.set(null);
         this.showNotice('info', 'すでにその商品は登録されています。');
         return;
       }
+      this.pendingProduct.set(null);
+      this.barcodeInput = '';
       this.manualBarcode = '';
       this.manualName = '';
-      this.showNotice('success', '手入力の商品を登録しました。');
+      this.showNotice('success', `JAN ${candidate.product.barcode} を在庫 ${quantity} で登録しました。`);
     } catch (error) {
-      this.showNotice('error', this.errorMessage(error));
+      this.registrationError.set(this.errorMessage(error));
     } finally {
       this.isRegistering.set(false);
     }
@@ -343,6 +371,7 @@ export class App implements OnDestroy {
     this.activePage.set('inventory');
     this.accessStatus.set('loading');
     this.scannerOpen.set(false);
+    this.pendingProduct.set(null);
     this.expandedAction.set(null);
     this.janEntryMode.set(null);
     this.isLoading.set(false);
@@ -354,37 +383,64 @@ export class App implements OnDestroy {
     this.accessCheckTimeout = undefined;
   }
 
-  private async registerFromBarcode(rawBarcode: string): Promise<void> {
+  private async prepareRegistration(rawBarcode: string, manualName?: string): Promise<void> {
     const barcode = this.cleanBarcode(rawBarcode);
     if (!barcode) {
-      this.showNotice('error', '読み取ったバーコードが空です。');
+      this.showNotice('error', 'JANコードを入力または読み取ってください。');
       return;
     }
-    if (!this.ensureInventoryAccess()) return;
+    if (this.isRegistering() || !this.ensureInventoryAccess()) return;
 
     this.isRegistering.set(true);
-    this.showNotice('info', `JAN ${barcode} を Yahoo!ショッピングで検索しています…`);
     try {
-      const products = await firstValueFrom(this.yahooShopping.searchByBarcode(barcode));
-      const product = products[0];
-      if (!product) {
-        this.manualBarcode = barcode;
-        throw new Error(
-          'Yahoo!ショッピングで商品が見つかりませんでした。下の手入力フォームから登録できます。',
-        );
+      if (await this.inventory.getInventoryItem(barcode)) {
+        this.showNotice('info', 'すでにその商品は登録されています。');
+        return;
       }
-
-      const isNew = await this.inventory.registerCatalogProduct(product);
-      this.barcodeInput = '';
-      this.showNotice(
-        isNew ? 'success' : 'info',
-        isNew ? `「${product.name}」を在庫 0 で登録しました。` : 'すでにその商品は登録されています。',
-      );
+      const master = await this.inventory.getMasterProduct(barcode);
+      if (master) {
+        this.openRegistrationDialog(master, false, true);
+        return;
+      }
+      if (manualName !== undefined) {
+        this.openRegistrationDialog(this.manualProduct(barcode, manualName), true, false);
+        return;
+      }
+      this.showNotice('info', `JAN ${barcode} の商品情報を検索しています…`);
+      let product: ProductDetails | null = null;
+      let searchFailed = false;
+      try {
+        const products = await firstValueFrom(this.yahooShopping.searchByBarcode(barcode));
+        if (products[0]) product = { ...products[0], source: 'yahoo-shopping' };
+      } catch {
+        searchFailed = true;
+      }
+      if (product) {
+        this.openRegistrationDialog(product, false, false);
+      } else {
+        this.manualBarcode = barcode;
+        this.openRegistrationDialog(this.manualProduct(barcode, ''), true, false);
+        this.showNotice('info', searchFailed
+          ? '商品情報を取得できませんでした。商品名を入力して登録できます。'
+          : '商品情報が見つかりませんでした。商品名を入力して登録できます。');
+      }
     } catch (error) {
       this.showNotice('error', this.errorMessage(error));
     } finally {
       this.isRegistering.set(false);
     }
+  }
+
+  private openRegistrationDialog(product: ProductDetails, needsName: boolean, fromMaster: boolean): void {
+    this.pendingName = needsName ? product.name : '';
+    this.pendingQuantity = 1;
+    this.registrationError.set(null);
+    this.notice.set(null);
+    this.pendingProduct.set({ product, needsName, fromMaster });
+  }
+
+  private manualProduct(barcode: string, name: string): ProductDetails {
+    return { barcode, name, imageUrl: '', productUrl: '', source: 'manual', brand: '', storeName: '' };
   }
 
   private async deleteFromBarcode(rawBarcode: string): Promise<void> {

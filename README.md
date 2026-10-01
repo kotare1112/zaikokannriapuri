@@ -1,14 +1,15 @@
 # ZAiKO FLOW
 
-Angular と Firebase（Cloud Firestore）で作る、バーコード起点の在庫管理アプリです。カメラで JAN コードを読むかコードを入力すると、Yahoo!ショッピング商品検索 API v3 から先頭の商品情報を取得し、Firestore の `inventoryItems` コレクションに登録します。
+Angular と Firebase（Cloud Firestore）で作る、バーコード起点の在庫管理アプリです。カメラで JAN コードを読むかコードを入力すると、保存済みの商品マスターを確認し、未登録なら Yahoo!ショッピング商品検索 API v3 から商品情報を取得します。商品名と在庫数を確認してから、Firestore の `inventoryItems` コレクションに登録します。
 
 ## 実装済みの機能
 
 - カメラによる JAN / EAN / UPC などのバーコード読取り（カメラを使えない端末では番号入力）
-- Yahoo!ショッピング商品検索 API v3 の `jan_code` による商品情報の自動登録と重複防止
+- Yahoo!ショッピング商品検索 API v3 の `jan_code` による商品情報の取得と重複防止
 - バーコード読取りによる登録・削除、Firestore とのリアルタイム同期、在庫数の増減、在庫僅少の表示
 - Google ログイン、家族の利用申請、開発者による承認フロー
-- API に商品がない場合の手入力登録
+- 登録前の在庫数確認、API に商品がない場合の商品名入力
+- `productMasters` に商品情報を保存し、在庫から削除した後も再登録時に再利用
 
 ## 初期設定
 
@@ -42,7 +43,7 @@ Yahoo!商品検索 API はブラウザから直接呼び出すと CORS により
 
 ### Firestore Security Rules
 
-このリポジトリの `firestore.rules` は、開発者のGoogleアカウントと、開発者が承認した利用者だけに `inventoryItems` の読み書きを許可します。ルール変更時は次で反映します。
+このリポジトリの `firestore.rules` は、開発者のGoogleアカウントと、開発者が承認した利用者だけに `inventoryItems` と `productMasters` の参照を許可します。`productMasters` は新規作成のみ許可し、在庫から商品を削除しても残ります。ルール変更時は次で反映します。
 
 ```bash
 firebase deploy --only firestore

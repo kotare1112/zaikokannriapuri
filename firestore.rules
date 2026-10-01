@@ -65,5 +65,24 @@ service cloud.firestore {
         && request.resource.data.barcode == barcode;
       allow delete: if canUseInventory();
     }
+
+    match /productMasters/{barcode} {
+      allow read: if canUseInventory();
+      allow create: if canUseInventory()
+        && request.resource.data.keys().hasOnly([
+          'barcode', 'name', 'imageUrl', 'productUrl', 'source',
+          'brand', 'storeName', 'createdAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'barcode', 'name', 'imageUrl', 'productUrl', 'source',
+          'brand', 'storeName', 'createdAt'
+        ])
+        && request.resource.data.barcode == barcode
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.source in ['manual', 'yahoo-shopping'];
+      // 在庫から削除しても、登録済みの商品情報は残す。
+      allow update, delete: if false;
+    }
   }
 }

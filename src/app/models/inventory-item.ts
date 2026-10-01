@@ -19,3 +19,11 @@ export interface CatalogProduct {
   brand: string;
   storeName: string;
 }
+
+export interface ProductDetails extends CatalogProduct {
+  source: InventoryItem['source'];
+}
+
+export interface ProductMaster extends ProductDetails {
+  createdAt: string;
+}

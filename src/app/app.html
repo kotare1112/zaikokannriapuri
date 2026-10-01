@@ -197,6 +197,37 @@
         </div>
       }
 
+      @if (pendingProduct(); as candidate) {
+        <div class="scanner-layer" role="dialog" aria-modal="true" aria-labelledby="registration-title">
+          <section class="registration-modal card">
+            <button class="registration-modal__close" type="button" aria-label="登録画面を閉じる" (click)="closeRegistrationDialog()" [disabled]="isRegistering()">×</button>
+            <p class="overline">REGISTER PRODUCT</p>
+            <h2 id="registration-title">商品を登録</h2>
+            <p class="registration-modal__source">
+              {{ candidate.fromMaster ? '保存済みの商品情報を使用します。' : candidate.needsName ? '商品情報が見つかりませんでした。商品名を入力してください。' : 'Yahoo!ショッピングの商品情報を使用します。' }}
+            </p>
+            <p class="registration-modal__barcode">JANコード <strong>{{ candidate.product.barcode }}</strong></p>
+            <form class="registration-modal__form" (ngSubmit)="confirmRegistration()">
+              <label for="registration-name">商品名</label>
+              @if (candidate.needsName) {
+                <input id="registration-name" name="registrationName" [(ngModel)]="pendingName" autocomplete="off" placeholder="商品名を入力" required [disabled]="isRegistering()" />
+              } @else {
+                <strong class="registration-modal__name" id="registration-name">{{ candidate.product.name }}</strong>
+              }
+              <label for="registration-quantity">在庫数</label>
+              <input id="registration-quantity" name="registrationQuantity" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="pendingQuantity" required [disabled]="isRegistering()" />
+              @if (registrationError(); as message) {
+                <p class="registration-modal__error" role="alert">{{ message }}</p>
+              }
+              <div class="registration-modal__actions">
+                <button class="outline-button" type="button" (click)="closeRegistrationDialog()" [disabled]="isRegistering()">キャンセル</button>
+                <button class="primary-button" type="submit" [disabled]="isRegistering()">{{ isRegistering() ? '登録中…' : '登録する' }}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      }
+
       @if (janEntryMode(); as mode) {
         <section class="scan-bar card" [class.scan-bar--delete]="mode === 'delete'">
           <div class="scan-bar__label">
