@@ -17,6 +17,8 @@ import { InventoryItem, ProductDetails } from './models/inventory-item';
 type Notice = { kind: 'success' | 'error' | 'info'; text: string };
 type Page = 'inventory' | 'admin';
 type ScannerMode = 'register' | 'delete';
+type SortField = 'updatedAt' | 'name' | 'quantity' | 'barcode';
+type SortDirection = 'asc' | 'desc';
 type RegistrationCandidate = { product: ProductDetails; needsName: boolean; fromMaster: boolean };
 type OptimisticInventoryChange = { item: InventoryItem | null; committed: boolean };
 
@@ -31,6 +33,7 @@ export class App implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly inventory = inject(InventoryRepository);
   private readonly yahooShopping = inject(YahooShoppingService);
+  private readonly japaneseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
   private stopWatching?: () => void;
   private stopAccessWatching?: () => void;
   private stopAccessRequests?: () => void;
@@ -78,24 +81,46 @@ export class App implements OnDestroy {
     }
     this.resetSignedOutSession();
   });
-  protected search = '';
+  protected readonly search = signal('');
+  protected readonly sortField = signal<SortField>('updatedAt');
+  protected readonly sortDirection = signal<SortDirection>('desc');
   protected barcodeInput = '';
   protected pendingName = '';
   protected pendingQuantity: number | null = 1;
 
   protected readonly filteredItems = computed(() => {
-    const keyword = this.search.trim().toLowerCase();
-    if (!keyword) return this.items();
-    return this.items().filter((item) =>
-      [item.name, item.barcode, item.brand, item.storeName]
-        .join(' ')
-        .toLowerCase()
-        .includes(keyword),
-    );
+    const keyword = this.search().trim().toLowerCase();
+    const field = this.sortField();
+    const direction = this.sortDirection() === 'asc' ? 1 : -1;
+    const matching = keyword
+      ? this.items().filter((item) =>
+          [item.name, item.barcode, item.brand, item.storeName]
+            .join(' ')
+            .toLowerCase()
+            .includes(keyword),
+        )
+      : [...this.items()];
+    return matching.sort((first, second) => {
+      const comparison = field === 'quantity'
+        ? first.quantity - second.quantity
+        : field === 'name' || field === 'barcode'
+          ? this.japaneseCollator.compare(first[field], second[field])
+          : first.updatedAt.localeCompare(second.updatedAt);
+      return comparison * direction || this.japaneseCollator.compare(first.barcode, second.barcode);
+    });
   });
   protected readonly totalQuantity = computed(() =>
     this.items().reduce((total, item) => total + item.quantity, 0),
   );
+
+  protected setSortField(field: SortField): void {
+    this.sortField.set(field);
+    this.sortDirection.set(field === 'name' || field === 'barcode' ? 'asc' : 'desc');
+  }
+
+  protected toggleSortDirection(): void {
+    this.sortDirection.update((direction) => direction === 'asc' ? 'desc' : 'asc');
+  }
   ngOnDestroy(): void {
     this.stopWatching?.();
     this.stopAccessWatching?.();

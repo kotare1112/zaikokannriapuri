@@ -252,8 +252,19 @@
       <section class="workspace">
         <div class="workspace__heading"><div><p class="overline">INVENTORY LIST</p><h2>現在の在庫</h2></div></div>
         <div class="toolbar">
-          <label class="search-field"><span>⌕</span><input [(ngModel)]="search" name="search" type="search" placeholder="商品名・JANコード・ブランドで検索" /></label>
-          <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
+          <label class="search-field"><span>⌕</span><input [ngModel]="search()" (ngModelChange)="search.set($event)" name="search" type="search" placeholder="商品名・JANコード・ブランドで検索" /></label>
+          <div class="toolbar__controls">
+            <span class="toolbar__count">{{ filteredItems().length }} 件を表示</span>
+            <label class="sort-field">並び替え
+              <select [ngModel]="sortField()" (ngModelChange)="setSortField($event)" name="sortField">
+                <option value="updatedAt">更新日時</option>
+                <option value="name">商品名</option>
+                <option value="quantity">在庫数</option>
+                <option value="barcode">JANコード</option>
+              </select>
+            </label>
+            <button class="sort-direction" type="button" [attr.aria-label]="'並び順を' + (sortDirection() === 'asc' ? '降順' : '昇順') + 'に変更'" (click)="toggleSortDirection()">{{ sortDirection() === 'asc' ? '昇順 ↑' : '降順 ↓' }}</button>
+          </div>
         </div>
         <div class="table-card card">
           @if (isLoading()) {
