@@ -670,6 +670,18 @@ button:disabled,
   text-align: center;
   width: 54px;
 }
+.quantity-control__input,
+.registration-modal__quantity input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.quantity-control__input::-webkit-inner-spin-button,
+.quantity-control__input::-webkit-outer-spin-button,
+.registration-modal__quantity input::-webkit-inner-spin-button,
+.registration-modal__quantity input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .quantity-control .quantity-control__save {
   color: #326cde;
   font-size: 0.7rem;
