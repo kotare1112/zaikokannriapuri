@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { User } from 'firebase/auth';
 import { firstValueFrom } from 'rxjs';
@@ -51,6 +51,7 @@ export class App implements OnDestroy {
   protected readonly signInError = this.auth.signInError;
   protected readonly accessStatus = signal<AccessStatus | 'loading' | 'error'>('loading');
   protected readonly activePage = signal<Page>('inventory');
+  protected readonly menuOpen = signal(false);
   protected readonly pendingRequests = signal<AccessRequest[]>([]);
   protected readonly approvedRequests = signal<AccessRequest[]>([]);
   protected readonly isReviewing = signal<string | null>(null);
@@ -189,6 +190,31 @@ export class App implements OnDestroy {
     if (typeof window !== 'undefined') window.removeEventListener('pageshow', this.refreshOnVisible);
   }
 
+  @HostListener('document:click', ['$event'])
+  protected closeMenuOnOutsideClick(event: MouseEvent): void {
+    if (event.target instanceof Element && !event.target.closest('.topbar-menu')) {
+      this.menuOpen.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeMenuOnEscape(): void {
+    this.menuOpen.set(false);
+  }
+
+  protected toggleMenu(): void {
+    this.menuOpen.update((open) => !open);
+  }
+
+  protected scrollToTop(event: MouseEvent): void {
+    event.preventDefault();
+    this.menuOpen.set(false);
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+  }
+
   protected async signIn(): Promise<void> {
     this.isSigningIn.set(true);
     try {
@@ -201,6 +227,7 @@ export class App implements OnDestroy {
   }
 
   protected async signOut(): Promise<void> {
+    this.menuOpen.set(false);
     this.stopWatching?.();
     this.stopWatching = undefined;
     this.stopAccessWatching?.();
@@ -373,11 +400,13 @@ export class App implements OnDestroy {
 
   protected openAdmin(): void {
     if (!this.isDeveloper()) return;
+    this.menuOpen.set(false);
     this.activePage.set('admin');
     this.watchAccessRequests();
   }
 
   protected openInventory(): void {
+    this.menuOpen.set(false);
     this.activePage.set('inventory');
     this.stopAccessRequests?.();
     this.stopAccessRequests = undefined;
@@ -524,6 +553,7 @@ export class App implements OnDestroy {
   }
 
   private resetSignedOutSession(): void {
+    this.menuOpen.set(false);
     this.clearAccessCheckTimeout();
     this.stopWatching?.();
     this.stopWatching = undefined;

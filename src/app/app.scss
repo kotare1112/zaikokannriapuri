@@ -95,9 +95,14 @@ button:disabled,
 }
 .topbar {
   align-items: center;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e7ebf2;
   display: flex;
   height: 82px;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .brand {
   align-items: center;
@@ -124,20 +129,6 @@ button:disabled,
   justify-content: center;
   letter-spacing: 0;
   width: 30px;
-}
-.topbar__right {
-  align-items: center;
-  color: #738096;
-  display: flex;
-  flex-shrink: 0;
-  font-size: 0.76rem;
-  gap: 7px;
-  white-space: nowrap;
-}
-.auth-user {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .google-button,
 .auth-button {
@@ -1089,9 +1080,6 @@ footer {
   .table-card {
     overflow-x: auto;
   }
-  .topbar__right {
-    display: flex;
-  }
   .admin-page__heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1108,12 +1096,6 @@ footer {
   .topbar {
     height: 66px;
     gap: 8px;
-  }
-  .topbar__right {
-    gap: 5px;
-  }
-  .auth-user {
-    display: none;
   }
   .google-button,
   .auth-button {

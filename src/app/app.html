@@ -62,17 +62,27 @@
 } @else {
   <main id="top" class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Zaiko Flow ホーム" (click)="openInventory()">
+      <a class="brand" href="#top" aria-label="ページの先頭へ" (click)="scrollToTop($event)">
         <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
       </a>
-      <div class="topbar__right">
-        @if (isDeveloper()) {
-          <button class="auth-button" type="button" (click)="activePage() === 'admin' ? openInventory() : openAdmin()">
-            {{ activePage() === 'admin' ? '在庫画面' : '管理者画面' }}
-          </button>
+      <div class="topbar-menu">
+        <button class="topbar-menu__toggle" [class.topbar-menu__toggle--open]="menuOpen()" type="button" aria-controls="account-menu" [attr.aria-expanded]="menuOpen()" [attr.aria-label]="menuOpen() ? 'メニューを閉じる' : 'メニューを開く'" (click)="toggleMenu()">
+          <span></span><span></span><span></span>
+        </button>
+        @if (menuOpen()) {
+          <nav id="account-menu" class="topbar-menu__panel" aria-label="アカウントメニュー">
+            <div class="topbar-menu__account">
+              <span class="sync-dot" aria-hidden="true"></span>
+              <div><strong>{{ userLabel() }}</strong><small>{{ user()?.email }}</small></div>
+            </div>
+            @if (isDeveloper()) {
+              <button type="button" (click)="activePage() === 'admin' ? openInventory() : openAdmin()">
+                {{ activePage() === 'admin' ? '在庫画面に戻る' : '管理者画面を開く' }}
+              </button>
+            }
+            <button class="topbar-menu__logout" type="button" (click)="signOut()">ログアウト</button>
+          </nav>
         }
-        <span class="sync-dot"></span><span class="auth-user">{{ userLabel() }}</span>
-        <button class="auth-button" type="button" (click)="signOut()">ログアウト</button>
       </div>
     </header>
 
