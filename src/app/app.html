@@ -73,7 +73,7 @@
           <nav id="account-menu" class="topbar-menu__panel" aria-label="アカウントメニュー">
             <div class="topbar-menu__account">
               <span class="sync-dot" aria-hidden="true"></span>
-              <div><strong>{{ userLabel() }}</strong><small>{{ user()?.email }}</small></div>
+              <strong>{{ userLabel() }}</strong>
             </div>
             @if (isDeveloper()) {
               <button type="button" (click)="activePage() === 'admin' ? openInventory() : openAdmin()">

@@ -70,23 +70,14 @@ app-root .topbar-menu__account {
   min-width: 0;
   padding: 10px 12px 14px;
 }
-app-root .topbar-menu__account > div {
-  min-width: 0;
-}
-app-root .topbar-menu__account :is(strong, small) {
+app-root .topbar-menu__account strong {
+  color: #2a364d;
   display: block;
+  font-size: 0.85rem;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-app-root .topbar-menu__account strong {
-  color: #2a364d;
-  font-size: 0.85rem;
-}
-app-root .topbar-menu__account small {
-  color: #7b8799;
-  font-size: 0.72rem;
-  margin-top: 3px;
 }
 app-root .topbar-menu__panel button {
   background: transparent;
