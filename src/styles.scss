@@ -1,5 +1,5 @@
 html {
-  background: #f7f9fc;
+  background: #fbf4e8;
   scroll-behavior: smooth;
 }
 body {
@@ -12,10 +12,10 @@ app-root .topbar-menu {
 }
 app-root .topbar-menu__toggle {
   align-items: center;
-  background: #fff;
-  border: 1px solid #d7dfeb;
+  background: #252525;
+  border: 1px solid #595959;
   border-radius: 10px;
-  color: #2c405e;
+  color: #fff;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -27,10 +27,10 @@ app-root .topbar-menu__toggle {
 }
 app-root .topbar-menu__toggle:hover,
 app-root .topbar-menu__toggle--open {
-  background: #edf4ff;
-  border-color: #9bb7ee;
+  background: #383838;
+  border-color: #8db7ff;
 }
-app-root .topbar-menu__toggle:active { background: #dce9ff; }
+app-root .topbar-menu__toggle:active { background: #4b4b4b; }
 app-root .topbar-menu__toggle:focus-visible,
 app-root .topbar-menu__panel button:focus-visible {
   outline: 2px solid #285fd3;

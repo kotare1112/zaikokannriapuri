@@ -66,7 +66,7 @@ input[aria-invalid='true'] {
   background:
     radial-gradient(circle at 20% 20%, #e8f0ff 0, transparent 32%),
     radial-gradient(circle at 80% 75%, #e7faf2 0, transparent 28%),
-    #f8fafc;
+    #fbf4e8;
   display: flex;
   justify-content: center;
   min-height: 100svh;
@@ -117,9 +117,9 @@ input[aria-invalid='true'] {
 }
 .topbar {
   align-items: center;
-  background: rgba(247, 249, 252, 0.94);
+  background: rgba(17, 17, 17, 0.96);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid #e7ebf2;
+  border-bottom: 1px solid #303030;
   display: flex;
   height: 82px;
   justify-content: space-between;
@@ -143,6 +143,9 @@ input[aria-invalid='true'] {
 }
 .brand:hover { color: var(--color-primary); }
 .brand:active { opacity: 0.7; }
+.topbar .brand { color: #fff; }
+.topbar .brand:hover { color: #dce8ff; }
+.topbar .brand b { color: #8db7ff; }
 .brand b {
   color: #4276ed;
   font-weight: inherit;
