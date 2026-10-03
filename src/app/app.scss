@@ -117,12 +117,13 @@ input[aria-invalid='true'] {
 }
 .topbar {
   align-items: center;
-  background: rgba(17, 17, 17, 0.96);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid #303030;
+  background: #9bdcf2;
+  border-bottom: 1px solid #73bfdd;
   display: flex;
   height: 82px;
   justify-content: space-between;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: max(32px, calc(50vw - 588px));
   position: sticky;
   top: 0;
   z-index: 30;
@@ -143,9 +144,9 @@ input[aria-invalid='true'] {
 }
 .brand:hover { color: var(--color-primary); }
 .brand:active { opacity: 0.7; }
-.topbar .brand { color: #fff; }
-.topbar .brand:hover { color: #dce8ff; }
-.topbar .brand b { color: #8db7ff; }
+.topbar .brand { color: #123146; }
+.topbar .brand:hover { color: #175a86; }
+.topbar .brand b { color: #205d9a; }
 .brand b {
   color: #4276ed;
   font-weight: inherit;
@@ -1162,6 +1163,7 @@ footer {
   .topbar {
     height: 66px;
     gap: 8px;
+    padding-inline: 16px;
   }
   .google-button,
   .auth-button {

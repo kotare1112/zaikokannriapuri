@@ -12,10 +12,10 @@ app-root .topbar-menu {
 }
 app-root .topbar-menu__toggle {
   align-items: center;
-  background: #252525;
-  border: 1px solid #595959;
+  background: #e7f7ff;
+  border: 1px solid #56a2c9;
   border-radius: 10px;
-  color: #fff;
+  color: #14364b;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -27,10 +27,10 @@ app-root .topbar-menu__toggle {
 }
 app-root .topbar-menu__toggle:hover,
 app-root .topbar-menu__toggle--open {
-  background: #383838;
-  border-color: #8db7ff;
+  background: #d4effe;
+  border-color: #397fa5;
 }
-app-root .topbar-menu__toggle:active { background: #4b4b4b; }
+app-root .topbar-menu__toggle:active { background: #bee4f5; }
 app-root .topbar-menu__toggle:focus-visible,
 app-root .topbar-menu__panel button:focus-visible {
   outline: 2px solid #285fd3;
