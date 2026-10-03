@@ -150,6 +150,68 @@ app-root :is(.scanner-modal, .registration-modal) {
   from { opacity: 0; transform: translateY(14px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+@media (max-width: 700px) {
+  app-root .app-shell {
+    .inventory-table__head { display: none; }
+    .table-card {
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .inventory-table { display: grid; gap: 12px; }
+    .inventory-table__row {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 14px;
+      box-shadow: 0 6px 22px rgba(24, 35, 59, 0.045);
+      display: grid;
+      gap: 14px 10px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      min-height: 0;
+      padding: 16px;
+    }
+    .inventory-table__row:last-child { border-bottom: 1px solid var(--color-border); }
+    .inventory-table__row:hover { border-color: #acc5f7; }
+    .product-cell { grid-column: 1 / -1; }
+    .product-cell strong { font-size: 0.9rem; }
+    .barcode,
+    .updated {
+      align-self: center;
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .barcode::before,
+    .updated::before,
+    .quantity-control::before {
+      color: #66758d;
+      content: attr(data-label);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .barcode { grid-column: 1; grid-row: 2; }
+    .updated { grid-column: 2; grid-row: 2; text-align: right; }
+    .quantity-control {
+      border-top: 1px solid #edf0f4;
+      flex-wrap: wrap;
+      grid-column: 1 / -1;
+      grid-row: 3;
+      padding-top: 12px;
+    }
+    .quantity-control::before { flex-basis: 100%; }
+    .quantity-control button { height: 44px; width: 44px; }
+    .quantity-control__input { height: 44px; width: 72px; }
+    .quantity-control .quantity-control__save { height: 44px; padding: 0 14px; }
+    .quantity-control__error,
+    .quantity-control__status { flex-basis: 100%; }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
