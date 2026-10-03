@@ -127,6 +127,9 @@ input[aria-invalid='true'] {
   top: 0;
   z-index: 30;
 }
+.topbar--hidden {
+  visibility: hidden;
+}
 .brand {
   align-items: center;
   color: #17233a;

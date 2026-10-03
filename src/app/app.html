@@ -61,7 +61,7 @@
   </main>
 } @else {
   <main id="top" class="app-shell">
-    <header class="topbar">
+    <header class="topbar" [class.topbar--hidden]="scannerOpen() || !!pendingProduct()" [attr.aria-hidden]="scannerOpen() || !!pendingProduct() ? 'true' : null" [attr.inert]="scannerOpen() || !!pendingProduct() ? '' : null">
       <a class="brand" href="#top" aria-label="ページの先頭へ" (click)="scrollToTop($event)">
         <span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span>
       </a>
