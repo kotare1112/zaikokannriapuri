@@ -170,13 +170,14 @@
         </section>
       </section>
     } @else {
-      <section class="hero">
-        <div>
-          <p class="overline">INVENTORY CONTROL</p>
-          <h1>迷わない、<em>在庫管理。</em></h1>
-          <p class="hero__copy">バーコードから商品を登録・削除。家族で共有するシンプルな在庫台帳です。</p>
+      <section class="hero" aria-labelledby="inventory-title">
+        <div class="hero__intro">
+          <div class="hero__identity">
+            <h1 id="inventory-title">ZAiKO <em>FLOW</em></h1>
+          </div>
+          <img class="hero__image" src="/inventory-register-hero.png" width="720" height="480" alt="商品のバーコードを読み取り、在庫に登録するイメージ" decoding="async" fetchpriority="high" />
         </div>
-        <div class="hero__actions">
+        <div class="hero__actions" aria-label="商品操作">
           <div class="operation-stack">
             <button class="primary-button primary-button--large operation-parent" [class.operation-parent--expanded]="expandedAction() === 'register'" type="button" [attr.aria-expanded]="expandedAction() === 'register'" (click)="toggleActionMenu('register')" [disabled]="isRegistering()">
               <span class="button-icon" aria-hidden="true">▣</span>{{ isRegistering() ? '処理中…' : '商品を登録' }}
@@ -301,8 +302,6 @@
             <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
           } @else if (isReadingSearchLoading() && !filteredItems().length) {
             <div class="empty-state"><span class="loading-dot"></span> 漢字の読みを確認しています…</div>
-          } @else if (!filteredItems().length) {
-            <div class="empty-state"><strong>{{ items().length ? '該当する商品がありません' : 'まだ商品が登録されていません' }}</strong><p>{{ items().length ? '検索条件を変えてみてください。' : '商品を登録して始めましょう。' }}</p></div>
           } @else {
             @if (isLoading()) {
               <p class="inventory-loading-note">ほかの在庫を読み込んでいます…</p>
@@ -310,7 +309,7 @@
             <div class="inventory-table" role="table" aria-label="現在の在庫">
               <div class="inventory-table__head" role="row"><span role="columnheader">商品</span><span role="columnheader">JAN コード</span><span role="columnheader">在庫数</span><span role="columnheader">更新日時</span></div>
               @for (item of filteredItems(); track item.barcode) {
-                <div class="inventory-table__row" role="row">
+                <div class="inventory-table__row" role="row" animate.enter="inventory-row-enter" animate.leave="inventory-row-leave">
                   <div class="product-cell" role="cell">
                     @if (item.imageUrl) { <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" /> } @else { <span class="product-placeholder">▦</span> }
                     <div><strong>{{ item.name }}</strong><small>{{ item.brand || item.storeName || '手入力で登録' }}</small></div>
@@ -328,6 +327,8 @@
                   </div>
                   <span class="updated" role="cell" data-label="更新日時">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
                 </div>
+              } @empty {
+                <div class="empty-state inventory-empty-enter" role="status"><strong>{{ items().length ? '該当する商品がありません' : 'まだ商品が登録されていません' }}</strong><p>{{ items().length ? '検索条件を変えてみてください。' : '商品を登録して始めましょう。' }}</p></div>
               }
             </div>
           }

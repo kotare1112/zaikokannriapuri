@@ -188,18 +188,35 @@ input[aria-invalid='true'] {
   width: 7px;
 }
 .hero {
-  align-items: flex-end;
+  align-items: stretch;
+  background: linear-gradient(125deg, #eef4ff, #f9fbff 58%, #effaf5);
+  border: 1px solid #dfe8f5;
+  border-radius: 24px;
   display: flex;
-  gap: 32px;
-  justify-content: space-between;
-  padding: 60px 0 38px;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 28px;
+  overflow: hidden;
+  padding: 24px 32px 28px;
+}
+.hero__intro {
+  align-items: center;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 340px);
+}
+.hero__image {
+  display: block;
+  height: auto;
+  justify-self: end;
+  max-width: 340px;
+  width: 100%;
 }
 .hero__actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: 10px;
-  width: min(100%, 410px);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
 }
 .operation-stack {
   overflow: hidden;
@@ -296,21 +313,14 @@ input[aria-invalid='true'] {
 }
 .hero h1 {
   color: #18233b;
-  font-size: clamp(2.25rem, 5vw, 4.25rem);
-  letter-spacing: -0.07em;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  letter-spacing: -0.065em;
   line-height: 1.06;
   margin: 0;
 }
 .hero h1 em {
   color: #3772ed;
   font-style: normal;
-}
-.hero__copy {
-  color: var(--color-muted);
-  font-size: 0.97rem;
-  line-height: 1.75;
-  margin: 21px 0 0;
-  max-width: 600px;
 }
 .primary-button,
 .secondary-button,
@@ -1133,15 +1143,7 @@ footer {
     justify-content: flex-start;
   }
   .hero {
-    align-items: flex-start;
-    flex-direction: column;
-    padding-top: 40px;
-  }
-  .hero__actions {
-    width: 100%;
-  }
-  .hero__actions > * {
-    flex: 1;
+    padding: 22px 24px 26px;
   }
   .metrics {
     grid-template-columns: repeat(2, 1fr);
@@ -1169,13 +1171,26 @@ footer {
     padding: 7px 8px;
   }
   .hero h1 {
-    font-size: 2.55rem;
+    font-size: clamp(2.4rem, 10vw, 3.2rem);
+  }
+  .hero {
+    margin-top: 16px;
+    padding: 22px 18px;
+  }
+  .hero__intro {
+    gap: 4px;
+    grid-template-columns: 1fr;
+  }
+  .hero__image {
+    justify-self: center;
+    max-width: 240px;
   }
   .primary-button--large {
     width: 100%;
   }
   .hero__actions {
-    flex-direction: column;
+    gap: 10px;
+    grid-template-columns: 1fr;
   }
   .action-slide__inner {
     flex-direction: column;
