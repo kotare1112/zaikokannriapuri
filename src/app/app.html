@@ -1,7 +1,7 @@
 @if (!user()) {
   <main class="login-shell">
     <section class="login-card card" aria-labelledby="login-title">
-      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span></div>
       <p class="overline">FAMILY INVENTORY</p>
       <h1 id="login-title">在庫を、家族で<br /><em>かんたんに。</em></h1>
       <p class="login-card__copy">
@@ -27,14 +27,14 @@
 } @else if (accessStatus() === 'loading') {
   <main class="login-shell">
     <section class="login-card card">
-      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span></div>
       <p class="login-card__status"><span class="loading-dot"></span> 利用権限を確認しています…</p>
     </section>
   </main>
 } @else if (accessStatus() === 'error') {
   <main class="login-shell">
     <section class="login-card card" aria-labelledby="connection-title">
-      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span></div>
       <p class="overline">CONNECTION CHECK</p>
       <h1 id="connection-title">接続を確認<br /><em>できませんでした。</em></h1>
       <p class="login-card__copy">通信状態を確認して、もう一度お試しください。</p>
@@ -45,7 +45,7 @@
 } @else if (accessStatus() === 'pending' || accessStatus() === 'rejected') {
   <main class="login-shell">
     <section class="login-card card" aria-labelledby="request-title">
-      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span></div>
+      <div class="brand brand--login"><span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span></div>
       @if (accessStatus() === 'pending') {
         <p class="overline">ACCESS REQUEST</p>
         <h1 id="request-title">利用申請を<br /><em>送信しました。</em></h1>
@@ -63,7 +63,7 @@
   <main id="top" class="app-shell">
     <header class="topbar">
       <a class="brand" href="#top" aria-label="ページの先頭へ" (click)="scrollToTop($event)">
-        <span class="brand-mark">Z</span><span>ZAiKO <b>FLOW</b></span>
+        <span class="brand-mark">Z</span><span>ZAIKO <b>FLOW</b></span>
       </a>
       <div class="topbar-menu">
         <button class="topbar-menu__toggle" [class.topbar-menu__toggle--open]="menuOpen()" type="button" aria-controls="account-menu" [attr.aria-expanded]="menuOpen()" [attr.aria-label]="menuOpen() ? 'メニューを閉じる' : 'メニューを開く'" (click)="toggleMenu()">
@@ -173,7 +173,7 @@
       <section class="hero" aria-labelledby="inventory-title">
         <div class="hero__intro">
           <div class="hero__identity">
-            <h1 id="inventory-title">ZAiKO <em>FLOW</em></h1>
+            <h1 id="inventory-title">ZAIKO <em>FLOW</em></h1>
           </div>
         </div>
         <div class="hero__actions" aria-label="商品操作">
@@ -335,6 +335,6 @@
       </section>
 
     }
-    <footer>ZAiKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
+    <footer>ZAIKO FLOW · Firebase Firestore / Yahoo!ショッピング商品検索 API</footer>
   </main>
 }

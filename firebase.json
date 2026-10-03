@@ -2,7 +2,7 @@
   "auth": {
     "providers": {
       "googleSignIn": {
-        "oAuthBrandDisplayName": "ZAiKO FLOW",
+        "oAuthBrandDisplayName": "ZAIKO FLOW",
         "supportEmail": "kotare1112@gmail.com"
       }
     }

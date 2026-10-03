@@ -1,4 +1,4 @@
-# ZAiKO FLOW
+# ZAIKO FLOW
 
 Angular と Firebase（Cloud Firestore）で作る、バーコード起点の在庫管理アプリです。カメラで JAN コードを読むかコードを入力すると、保存済みの商品マスターを確認し、未登録なら Yahoo!ショッピング商品検索 API v3 から商品情報を取得します。商品名と在庫数を確認してから、Firestore の `inventoryItems` コレクションに登録します。
 
