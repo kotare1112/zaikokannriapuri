@@ -87,7 +87,7 @@
     </header>
 
     @if (notice(); as message) {
-      <div class="notice" [class.notice--error]="message.kind === 'error'" [class.notice--success]="message.kind === 'success'" role="status">
+      <div class="notice" [class.notice--error]="message.kind === 'error'" [class.notice--success]="message.kind === 'success'" [attr.role]="message.kind === 'error' ? 'alert' : 'status'">
         <span>{{ message.kind === 'error' ? '!' : message.kind === 'success' ? '✓' : 'i' }}</span>
         {{ message.text }}
         <button type="button" aria-label="メッセージを閉じる" (click)="notice.set(null)">×</button>
@@ -102,10 +102,12 @@
             <h1>利用申請の管理</h1>
             <p>承認した家族だけが在庫管理機能を利用できます。</p>
           </div>
-          <span class="request-count">{{ pendingRequests().length }} 件の申請</span>
+          <span class="request-count">{{ requestsLoading() ? '確認中…' : pendingRequests().length + ' 件の申請' }}</span>
         </div>
-        <section class="request-list card" aria-label="利用申請一覧">
-          @if (!pendingRequests().length) {
+        <section class="request-list card" aria-label="利用申請一覧" [attr.aria-busy]="requestsLoading()">
+          @if (requestsLoading()) {
+            <div class="empty-state empty-state--loading" role="status"><span class="loading-dot"></span>利用申請を読み込んでいます…</div>
+          } @else if (!pendingRequests().length) {
             <div class="empty-state"><strong>承認待ちの申請はありません</strong><p>家族がGoogleでログインすると、ここに申請が届きます。</p></div>
           } @else {
             @for (request of pendingRequests(); track request.uid) {
@@ -136,7 +138,7 @@
             </div>
             <span class="request-count">{{ approvedRequests().length + 1 }} 人</span>
           </div>
-          <section class="request-list card" aria-label="登録済みアカウント一覧">
+          <section class="request-list card" aria-label="登録済みアカウント一覧" [attr.aria-busy]="requestsLoading()">
             <article class="request-row request-row--owner">
               <div class="request-row__avatar">{{ userLabel().slice(0, 1) || '?' }}</div>
               <div class="request-row__person">
@@ -161,6 +163,9 @@
                 </div>
               </article>
             }
+            @if (requestsLoading()) {
+              <p class="member-section__loading" role="status"><span class="loading-dot"></span>家族のアカウントを確認しています…</p>
+            }
           </section>
         </section>
       </section>
@@ -174,7 +179,7 @@
         <div class="hero__actions">
           <div class="operation-stack">
             <button class="primary-button primary-button--large operation-parent" [class.operation-parent--expanded]="expandedAction() === 'register'" type="button" [attr.aria-expanded]="expandedAction() === 'register'" (click)="toggleActionMenu('register')" [disabled]="isRegistering()">
-              <span class="button-icon">▣</span>商品を登録
+              <span class="button-icon" aria-hidden="true">▣</span>{{ isRegistering() ? '処理中…' : '商品を登録' }}
             </button>
             <div class="action-slide" [class.action-slide--open]="expandedAction() === 'register'">
               <div class="action-slide__inner">
@@ -186,7 +191,7 @@
 
           <div class="operation-stack operation-stack--delete">
             <button class="danger-button operation-parent" [class.operation-parent--expanded]="expandedAction() === 'delete'" type="button" [attr.aria-expanded]="expandedAction() === 'delete'" (click)="toggleActionMenu('delete')" [disabled]="isRegistering()">
-              <span class="button-icon">×</span>商品を削除
+              <span class="button-icon" aria-hidden="true">×</span>{{ isRegistering() ? '処理中…' : '商品を削除' }}
             </button>
             <div class="action-slide action-slide--delete" [class.action-slide--open]="expandedAction() === 'delete'">
               <div class="action-slide__inner">
@@ -219,19 +224,21 @@
             <p class="registration-modal__barcode">JANコード <strong>{{ candidate.product.barcode }}</strong></p>
             <form class="registration-modal__form" (ngSubmit)="confirmRegistration()">
               <label for="registration-name">商品名</label>
-              <input id="registration-name" name="registrationName" [(ngModel)]="pendingName" autocomplete="off" placeholder="商品名を入力" required [disabled]="isRegistering()" />
+              <input id="registration-name" name="registrationName" [(ngModel)]="pendingName" autocomplete="off" placeholder="商品名を入力" required [disabled]="isRegistering()" [attr.aria-invalid]="!pendingName.trim()" />
+              @if (!pendingName.trim()) { <small class="field-hint">商品名を入力すると登録できます。</small> }
               <label for="registration-quantity">在庫数</label>
               <div class="registration-modal__quantity">
                 <button type="button" aria-label="在庫数を1減らす" (click)="adjustPendingQuantity(-1)" [disabled]="isRegistering() || pendingQuantity === 0">−</button>
-                <input id="registration-quantity" name="registrationQuantity" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="pendingQuantity" required [disabled]="isRegistering()" />
+                <input id="registration-quantity" name="registrationQuantity" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="pendingQuantity" required [disabled]="isRegistering()" [attr.aria-invalid]="pendingQuantity === null || pendingQuantity < 0" />
                 <button type="button" aria-label="在庫数を1増やす" (click)="adjustPendingQuantity(1)" [disabled]="isRegistering() || pendingQuantity === 9007199254740991">＋</button>
               </div>
+              <small class="field-hint">0以上の整数で入力してください。</small>
               @if (registrationError(); as message) {
                 <p class="registration-modal__error" role="alert">{{ message }}</p>
               }
               <div class="registration-modal__actions">
                 <button class="outline-button" type="button" (click)="closeRegistrationDialog()" [disabled]="isRegistering()">キャンセル</button>
-                <button class="primary-button" type="submit" [disabled]="isRegistering()">{{ isRegistering() ? '登録中…' : '登録する' }}</button>
+                <button class="primary-button" type="submit" [disabled]="!canConfirmRegistration()">{{ isRegistering() ? '登録中…' : '登録する' }}</button>
               </div>
             </form>
           </section>
@@ -248,9 +255,10 @@
             </div>
           </div>
           <form class="barcode-form" (ngSubmit)="submitBarcode()">
-            <input name="barcode" [(ngModel)]="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="例: 4900000000000" aria-label="JANコード番号" />
-            <button [class]="mode === 'delete' ? 'danger-button' : 'secondary-button'" type="submit" [disabled]="isRegistering()">{{ mode === 'delete' ? '削除' : '登録' }}</button>
+            <input name="barcode" [(ngModel)]="barcodeInput" inputmode="numeric" autocomplete="off" placeholder="例: 4900000000000" aria-label="JANコード番号" aria-describedby="barcode-hint" [attr.aria-invalid]="!!barcodeInput && !isBarcodeInputValid()" />
+            <button [class]="mode === 'delete' ? 'danger-button' : 'secondary-button'" type="submit" [disabled]="isRegistering() || !isBarcodeInputValid()">{{ isRegistering() ? '処理中…' : mode === 'delete' ? '削除' : '登録' }}</button>
           </form>
+          <small id="barcode-hint" class="field-hint scan-bar__hint">JANコードを入力すると操作できます。</small>
         </section>
       }
 
@@ -288,7 +296,7 @@
             <button class="sort-direction" type="button" [attr.aria-label]="'並び順を' + (sortDirection() === 'asc' ? '降順' : '昇順') + 'に変更'" (click)="toggleSortDirection()">{{ sortDirection() === 'asc' ? '昇順 ↑' : '降順 ↓' }}</button>
           </div>
         </div>
-        <div class="table-card card">
+        <div class="table-card card" [attr.aria-busy]="isLoading() || isReadingSearchLoading()">
           @if (isLoading() && !items().length) {
             <div class="empty-state"><span class="loading-dot"></span> 在庫を読み込んでいます…</div>
           } @else if (isReadingSearchLoading() && !filteredItems().length) {
@@ -299,24 +307,26 @@
             @if (isLoading()) {
               <p class="inventory-loading-note">ほかの在庫を読み込んでいます…</p>
             }
-            <div class="inventory-table" role="table">
-              <div class="inventory-table__head" role="row"><span>商品</span><span>JAN コード</span><span>在庫数</span><span>更新日時</span></div>
+            <div class="inventory-table" role="table" aria-label="現在の在庫">
+              <div class="inventory-table__head" role="row"><span role="columnheader">商品</span><span role="columnheader">JAN コード</span><span role="columnheader">在庫数</span><span role="columnheader">更新日時</span></div>
               @for (item of filteredItems(); track item.barcode) {
                 <div class="inventory-table__row" role="row">
-                  <div class="product-cell">
+                  <div class="product-cell" role="cell">
                     @if (item.imageUrl) { <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" /> } @else { <span class="product-placeholder">▦</span> }
                     <div><strong>{{ item.name }}</strong><small>{{ item.brand || item.storeName || '手入力で登録' }}</small></div>
                   </div>
-                  <span class="barcode">{{ item.barcode }}</span>
-                  <div class="quantity-control">
-                    <button type="button" aria-label="在庫を 1 減らす" (click)="changeQuantity(item, -1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">−</button>
-                    <input class="quantity-control__input" [class.stock--low]="item.quantity > 0 && item.quantity <= 3" [class.stock--empty]="item.quantity === 0" type="number" min="0" step="1" inputmode="numeric" [attr.aria-label]="item.name + 'の在庫数'" [value]="quantityDrafts().get(item.barcode) ?? item.quantity" (input)="editQuantity(item.barcode, $any($event.target).value)" (keydown.enter)="saveQuantity(item)" (keydown.escape)="cancelQuantityEdit(item.barcode)" [disabled]="isRegistering() || savingQuantities().has(item.barcode)" />
-                    <button type="button" aria-label="在庫を 1 増やす" (click)="changeQuantity(item, 1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">＋</button>
+                  <span class="barcode" role="cell" data-label="JANコード">{{ item.barcode }}</span>
+                  <div class="quantity-control" role="cell" data-label="在庫数">
+                    <button type="button" [attr.aria-label]="item.name + 'の在庫を1減らす'" (click)="changeQuantity(item, -1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">−</button>
+                    <input class="quantity-control__input" [class.stock--low]="item.quantity > 0 && item.quantity <= 3" [class.stock--empty]="item.quantity === 0" type="number" min="0" step="1" inputmode="numeric" [attr.aria-label]="item.name + 'の在庫数'" [attr.aria-invalid]="quantityDrafts().has(item.barcode) && !isQuantityDraftValid(item.barcode)" [value]="quantityDrafts().get(item.barcode) ?? item.quantity" (input)="editQuantity(item.barcode, $any($event.target).value)" (keydown.enter)="saveQuantity(item)" (keydown.escape)="cancelQuantityEdit(item.barcode)" [disabled]="isRegistering() || savingQuantities().has(item.barcode)" />
+                    <button type="button" [attr.aria-label]="item.name + 'の在庫を1増やす'" (click)="changeQuantity(item, 1)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || quantityDrafts().has(item.barcode)">＋</button>
                     @if (quantityDrafts().has(item.barcode)) {
-                      <button class="quantity-control__save" type="button" [attr.aria-label]="item.name + 'の在庫数を保存'" (click)="saveQuantity(item)" [disabled]="isRegistering() || savingQuantities().has(item.barcode)">保存</button>
+                      <button class="quantity-control__save" type="button" [attr.aria-label]="item.name + 'の在庫数を保存'" (click)="saveQuantity(item)" [disabled]="isRegistering() || savingQuantities().has(item.barcode) || !isQuantityDraftValid(item.barcode)">保存</button>
                     }
+                    @if (savingQuantities().has(item.barcode)) { <span class="quantity-control__status" role="status">保存中…</span> }
+                    @if (quantityDrafts().has(item.barcode) && !isQuantityDraftValid(item.barcode)) { <span class="quantity-control__error" role="alert">0以上の整数を入力</span> }
                   </div>
-                  <span class="updated">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+                  <span class="updated" role="cell" data-label="更新日時">{{ item.updatedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
                 </div>
               }
             </div>

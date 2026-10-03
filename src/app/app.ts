@@ -54,6 +54,7 @@ export class App implements OnDestroy {
   protected readonly menuOpen = signal(false);
   protected readonly pendingRequests = signal<AccessRequest[]>([]);
   protected readonly approvedRequests = signal<AccessRequest[]>([]);
+  protected readonly requestsLoading = signal(false);
   protected readonly isReviewing = signal<string | null>(null);
   protected readonly isRemoving = signal<string | null>(null);
   private readonly syncedItems = signal<InventoryItem[]>([]);
@@ -98,6 +99,23 @@ export class App implements OnDestroy {
   protected barcodeInput = '';
   protected pendingName = '';
   protected pendingQuantity: number | null = 1;
+
+  protected isBarcodeInputValid(): boolean {
+    return !!this.cleanBarcode(this.barcodeInput);
+  }
+
+  protected canConfirmRegistration(): boolean {
+    return !this.isRegistering() && !!this.pendingName.trim() &&
+      this.pendingQuantity !== null && Number.isSafeInteger(this.pendingQuantity) &&
+      this.pendingQuantity >= 0;
+  }
+
+  protected isQuantityDraftValid(barcode: string): boolean {
+    const draft = this.quantityDrafts().get(barcode);
+    if (draft === undefined || !draft.trim()) return false;
+    const quantity = Number(draft);
+    return Number.isSafeInteger(quantity) && quantity >= 0;
+  }
 
   protected readonly filteredItems = computed(() => {
     const keywords = [this.search(), this.searchReading()]
@@ -272,6 +290,10 @@ export class App implements OnDestroy {
   }
 
   protected async submitBarcode(): Promise<void> {
+    if (!this.isBarcodeInputValid()) {
+      this.showNotice('error', 'JANコードを入力してください。');
+      return;
+    }
     if (this.janEntryMode() === 'delete') {
       await this.deleteFromBarcode(this.barcodeInput);
       return;
@@ -412,6 +434,7 @@ export class App implements OnDestroy {
     this.stopAccessRequests = undefined;
     this.pendingRequests.set([]);
     this.approvedRequests.set([]);
+    this.requestsLoading.set(false);
   }
 
   protected async reviewRequest(request: AccessRequest, status: 'approved' | 'rejected'): Promise<void> {
@@ -537,8 +560,10 @@ export class App implements OnDestroy {
 
   private watchAccessRequests(): void {
     if (this.stopAccessRequests) return;
+    this.requestsLoading.set(true);
     this.stopAccessRequests = this.access.watchAccessRequests(
       (requests) => {
+        this.requestsLoading.set(false);
         const pending = requests
           .filter((request) => request.status === 'pending')
           .sort((first, second) => second.requestedAt.localeCompare(first.requestedAt));
@@ -548,7 +573,10 @@ export class App implements OnDestroy {
         this.pendingRequests.set(pending);
         this.approvedRequests.set(approved);
       },
-      (error) => this.showNotice('error', this.errorMessage(error)),
+      (error) => {
+        this.requestsLoading.set(false);
+        this.showNotice('error', this.errorMessage(error));
+      },
     );
   }
 
@@ -567,6 +595,7 @@ export class App implements OnDestroy {
     this.savingQuantities.set(new Set());
     this.pendingRequests.set([]);
     this.approvedRequests.set([]);
+    this.requestsLoading.set(false);
     this.activePage.set('inventory');
     this.accessStatus.set('loading');
     this.scannerOpen.set(false);

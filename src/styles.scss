@@ -30,6 +30,13 @@ app-root .topbar-menu__toggle--open {
   background: #edf4ff;
   border-color: #9bb7ee;
 }
+app-root .topbar-menu__toggle:active { background: #dce9ff; }
+app-root .topbar-menu__toggle:focus-visible,
+app-root .topbar-menu__panel button:focus-visible {
+  outline: 2px solid #285fd3;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(47, 111, 236, 0.25);
+}
 app-root .topbar-menu__toggle span {
   background: currentColor;
   border-radius: 2px;
@@ -94,8 +101,8 @@ app-root .topbar-menu__panel button {
 app-root .topbar-menu__panel button:hover,
 app-root .topbar-menu__panel button:focus-visible {
   background: #edf4ff;
-  outline: 0;
 }
+app-root .topbar-menu__panel button:active { background: #dce9ff; }
 app-root .topbar-menu__panel .topbar-menu__logout {
   color: #bc4a51;
 }
