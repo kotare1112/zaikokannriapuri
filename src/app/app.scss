@@ -189,7 +189,7 @@ input[aria-invalid='true'] {
 }
 .hero {
   align-items: stretch;
-  background: linear-gradient(125deg, #eef4ff, #f9fbff 58%, #effaf5);
+  background: linear-gradient(90deg, #eef4fff0, #f9fbffb8 55%, #effaf550), url('/inventory-phone-background.png') right -28px top -54px / 680px auto no-repeat, linear-gradient(125deg, #eef4ff, #f9fbff 58%, #effaf5);
   border: 1px solid #dfe8f5;
   border-radius: 24px;
   display: flex;
@@ -201,16 +201,8 @@ input[aria-invalid='true'] {
 }
 .hero__intro {
   align-items: center;
-  display: grid;
-  gap: 24px;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 340px);
-}
-.hero__image {
-  display: block;
-  height: auto;
-  justify-self: end;
-  max-width: 340px;
-  width: 100%;
+  display: flex;
+  min-height: 190px;
 }
 .hero__actions {
   display: grid;
@@ -1174,16 +1166,13 @@ footer {
     font-size: clamp(2.4rem, 10vw, 3.2rem);
   }
   .hero {
+    background-position: center, right -95px top -8px, center;
+    background-size: auto, 440px auto, auto;
     margin-top: 16px;
     padding: 22px 18px;
   }
   .hero__intro {
-    gap: 4px;
-    grid-template-columns: 1fr;
-  }
-  .hero__image {
-    justify-self: center;
-    max-width: 240px;
+    min-height: 150px;
   }
   .primary-button--large {
     width: 100%;
