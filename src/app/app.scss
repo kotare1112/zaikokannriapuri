@@ -117,8 +117,9 @@ input[aria-invalid='true'] {
 }
 .topbar {
   align-items: center;
-  background: #9bdcf2;
-  border-bottom: 1px solid #73bfdd;
+  background: rgba(155, 220, 242, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   display: flex;
   height: 82px;
   justify-content: space-between;
