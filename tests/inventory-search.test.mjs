@@ -27,6 +27,21 @@ test('他のジャンルも商品名で判定し、ブランド名だけでは�
   assert.equal(createInventorySearchMatcher('麺')(item('麦茶', '4901234567890', '麺屋')), false);
 });
 
+test('スパゲッティとパスタなど別の呼び方でも同じ種類を検索できる', () => {
+  const spaghetti = createInventorySearchMatcher('スパゲッティ');
+  assert.equal(searchGenreLabel('スパゲッティ'), 'パスタ類');
+  assert.equal(spaghetti(item('パスタ 500g')), true);
+  assert.equal(spaghetti(item('ポポロスパ7 1.6mm 500g')), true);
+  assert.equal(spaghetti(item('ペンネ 200g')), true);
+  assert.equal(spaghetti(item('ラーメン')), false);
+  assert.equal(spaghetti(item('パスタソース')), false);
+  assert.equal(createInventorySearchMatcher('パスタ')(item('スパゲティ 500g')), true);
+  assert.equal(createInventorySearchMatcher('春雨')(item('マロニー 100g')), true);
+  assert.equal(createInventorySearchMatcher('炭酸飲料')(item('コーラ 500ml')), true);
+  assert.equal(createInventorySearchMatcher('漂白剤')(item('ワイドハイター 500ml')), true);
+  assert.equal(isSearchGenreExcluded('スパゲッティ', item('パスタソース')), true);
+});
+
 test('洗剤から漂白剤や製品ブランドも見つけ、容器などの雑貨は除く', () => {
   const matches = createInventorySearchMatcher('洗剤');
   assert.equal(searchGenreLabel('センザイ'), '洗剤・洗浄用品');
