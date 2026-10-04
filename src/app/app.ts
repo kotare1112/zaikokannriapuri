@@ -10,6 +10,7 @@ import {
 } from './core/access-control.service';
 import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
+import { createInventorySearchMatcher, searchGenreLabel } from './core/inventory-search';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
 import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scanner';
 import { InventoryItem, ProductDetails } from './models/inventory-item';
@@ -36,6 +37,8 @@ export class App implements OnDestroy {
   private readonly japaneseCollator = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
   private readonly readingCache = new Map<string, string>();
   private searchRequestId = 0;
+  private semanticRequestId = 0;
+  private semanticWorker?: Worker;
   private stopWatching?: () => void;
   private stopAccessWatching?: () => void;
   private stopAccessRequests?: () => void;
@@ -92,7 +95,13 @@ export class App implements OnDestroy {
   });
   protected readonly search = signal('');
   protected readonly searchReading = signal('');
+  protected readonly activeSearchGenre = computed(() => searchGenreLabel(this.search()));
   protected readonly isReadingSearchLoading = signal(false);
+  protected readonly semanticSearchState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  protected readonly semanticMatches = signal<ReadonlySet<string>>(new Set());
+  private readonly semanticSearchEffect = effect(() => {
+    this.updateSemanticSearch(this.search(), this.items());
+  });
   protected searchInput = '';
   protected readonly sortField = signal<SortField>('updatedAt');
   protected readonly sortDirection = signal<SortDirection>('desc');
@@ -118,18 +127,14 @@ export class App implements OnDestroy {
   }
 
   protected readonly filteredItems = computed(() => {
-    const keywords = [this.search(), this.searchReading()]
-      .map((value) => this.normalizeSearchText(value))
-      .filter(Boolean);
+    const query = this.search();
+    const reading = this.searchReading();
+    const semanticMatches = this.semanticMatches();
+    const matchesText = createInventorySearchMatcher(query, reading);
     const field = this.sortField();
     const direction = this.sortDirection() === 'asc' ? 1 : -1;
-    const matching = keywords.length
-      ? this.items().filter((item) => {
-          const text = this.normalizeSearchText(
-            [item.name, item.barcode, item.brand, item.storeName].join(' '),
-          );
-          return keywords.some((keyword) => text.includes(keyword));
-        })
+    const matching = query || reading
+      ? this.items().filter((item) => matchesText(item) || semanticMatches.has(item.barcode))
       : [...this.items()];
     return matching.sort((first, second) => {
       const comparison = field === 'quantity'
@@ -152,10 +157,12 @@ export class App implements OnDestroy {
   protected async submitSearch(): Promise<void> {
     const query = this.searchInput.trim();
     const requestId = ++this.searchRequestId;
+    this.semanticRequestId += 1;
+    this.semanticMatches.set(new Set());
     this.search.set(query);
     this.searchReading.set('');
     this.isReadingSearchLoading.set(false);
-    if (!/\p{Script=Han}/u.test(query)) return;
+    if (!/\p{Script=Han}/u.test(query) || searchGenreLabel(query)) return;
     const cachedReading = this.readingCache.get(query);
     if (cachedReading !== undefined) {
       this.searchReading.set(cachedReading);
@@ -182,12 +189,50 @@ export class App implements OnDestroy {
     this.search.set('');
     this.searchReading.set('');
     this.isReadingSearchLoading.set(false);
+    this.semanticRequestId += 1;
+    this.semanticMatches.set(new Set());
+    this.semanticSearchState.set('idle');
   }
 
-  private normalizeSearchText(value: string): string {
-    return value.normalize('NFKC').toLowerCase()
-      .replace(/[\u30a1-\u30f6]/gu, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60))
-      .replace(/\s+/gu, '');
+  private updateSemanticSearch(query: string, items: InventoryItem[]): void {
+    const requestId = ++this.semanticRequestId;
+    this.semanticMatches.set(new Set());
+    if (!query || !items.length || /^\d+$/u.test(query) || searchGenreLabel(query)) {
+      this.semanticSearchState.set('idle');
+      return;
+    }
+    if (typeof Worker === 'undefined') {
+      this.semanticSearchState.set('error');
+      return;
+    }
+    try {
+      this.semanticWorker ??= new Worker(new URL('./core/semantic-search.worker', import.meta.url), { type: 'module' });
+      this.semanticWorker.onmessage = (event: MessageEvent<{ type: 'result' | 'error'; requestId: number; barcodes?: string[] }>) => {
+        if (event.data.requestId !== this.semanticRequestId) return;
+        if (event.data.type === 'error') {
+          this.semanticSearchState.set('error');
+          return;
+        }
+        this.semanticMatches.set(new Set(event.data.barcodes ?? []));
+        this.semanticSearchState.set('ready');
+      };
+      this.semanticWorker.onerror = (error) => {
+        if (requestId !== this.semanticRequestId) return;
+        console.error('Semantic search worker failed:', error);
+        this.semanticSearchState.set('error');
+        this.semanticWorker?.terminate();
+        this.semanticWorker = undefined;
+      };
+      this.semanticSearchState.set('loading');
+      this.semanticWorker.postMessage({
+        requestId,
+        query,
+        products: items.map(({ barcode, name, brand }) => ({ barcode, name, brand })),
+      });
+    } catch (error) {
+      console.error('Could not start semantic search:', error);
+      this.semanticSearchState.set('error');
+    }
   }
 
   protected setSortField(field: SortField): void {
@@ -203,6 +248,8 @@ export class App implements OnDestroy {
     this.stopAccessWatching?.();
     this.stopAccessRequests?.();
     this.authStateEffect.destroy();
+    this.semanticSearchEffect.destroy();
+    this.semanticWorker?.terminate();
     this.clearAccessCheckTimeout();
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.refreshOnVisible);
     if (typeof window !== 'undefined') window.removeEventListener('pageshow', this.refreshOnVisible);
@@ -581,6 +628,9 @@ export class App implements OnDestroy {
   }
 
   private resetSignedOutSession(): void {
+    this.clearSearch();
+    this.semanticWorker?.terminate();
+    this.semanticWorker = undefined;
     this.menuOpen.set(false);
     this.clearAccessCheckTimeout();
     this.stopWatching?.();
