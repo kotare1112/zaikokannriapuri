@@ -26,6 +26,7 @@ const rawGenres: readonly Genre[] = [
       'ラーメン', 'うどん', 'そば', '蕎麦', 'そうめん', '素麺', 'ひやむぎ', '冷麦',
       '春雨', 'はるさめ', 'マロニー', 'ビーフン', '焼きそば', 'ちゃんぽん',
       '冷麺', 'きしめん', 'ほうとう', 'にゅうめん', 'spaghetti', 'pasta',
+      'ポポロスパ',
     ],
     excludes: [
       '麺つゆ', 'めんつゆ', 'そばつゆ', 'うどんつゆ', 'パスタソース',
@@ -91,6 +92,13 @@ function findGenre(query: string): Genre | undefined {
 
 export function searchGenreLabel(query: string): string | null {
   return findGenre(query)?.label ?? null;
+}
+
+export function isSearchGenreExcluded(query: string, item: SearchableItem): boolean {
+  const genre = findGenre(query);
+  if (!genre) return false;
+  const name = normalizeSearchText(item.name);
+  return [...genre.excludes, ...(genre.rejects ?? [])].some((term) => name.includes(term));
 }
 
 export function createInventorySearchMatcher(query: string, reading = ''): (item: SearchableItem) => boolean {

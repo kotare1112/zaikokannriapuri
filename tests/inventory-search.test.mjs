@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInventorySearchMatcher, searchGenreLabel } from '../src/app/core/inventory-search.ts';
+import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel } from '../src/app/core/inventory-search.ts';
 
 const item = (name, barcode = '4901234567890', brand = '') => ({ name, barcode, brand, storeName: '' });
 
@@ -9,12 +9,15 @@ test('麺のジャンル検索で表記の異なる食品を見つけ、関連�
   assert.equal(searchGenreLabel('メン類'), '麺類');
   assert.equal(matches(item('スパゲッティ 500g')), true);
   assert.equal(matches(item('マロニー 100g')), true);
+  assert.equal(matches(item('ポポロスパ7 1.6mm 500g')), true);
   assert.equal(matches(item('はるさめ')), true);
   assert.equal(matches(item('うどん')), true);
   assert.equal(matches(item('パスタソース')), false);
   assert.equal(matches(item('麺つゆ')), false);
   assert.equal(matches(item('うどん 麺つゆ付き')), true);
   assert.equal(matches(item('コーラ')), false);
+  assert.equal(isSearchGenreExcluded('麺', item('パスタソース')), true);
+  assert.equal(isSearchGenreExcluded('麺', item('ポポロスパ7')), false);
 });
 
 test('他のジャンルも商品名で判定し、ブランド名だけでは誤判定しない', () => {

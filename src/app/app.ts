@@ -10,7 +10,7 @@ import {
 } from './core/access-control.service';
 import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
-import { createInventorySearchMatcher, searchGenreLabel } from './core/inventory-search';
+import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel } from './core/inventory-search';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
 import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scanner';
 import { InventoryItem, ProductDetails } from './models/inventory-item';
@@ -134,7 +134,8 @@ export class App implements OnDestroy {
     const field = this.sortField();
     const direction = this.sortDirection() === 'asc' ? 1 : -1;
     const matching = query || reading
-      ? this.items().filter((item) => matchesText(item) || semanticMatches.has(item.barcode))
+      ? this.items().filter((item) => matchesText(item) ||
+        (semanticMatches.has(item.barcode) && !isSearchGenreExcluded(query, item)))
       : [...this.items()];
     return matching.sort((first, second) => {
       const comparison = field === 'quantity'
@@ -197,7 +198,7 @@ export class App implements OnDestroy {
   private updateSemanticSearch(query: string, items: InventoryItem[]): void {
     const requestId = ++this.semanticRequestId;
     this.semanticMatches.set(new Set());
-    if (!query || !items.length || /^\d+$/u.test(query) || searchGenreLabel(query)) {
+    if (!query || !items.length || /^\d+$/u.test(query)) {
       this.semanticSearchState.set('idle');
       return;
     }
