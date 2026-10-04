@@ -27,9 +27,12 @@ const rawGenres: readonly Genre[] = [
     products: [
       'パスタ', 'スパゲッティ', 'スパゲティ', 'スパゲッティー', 'スパゲティー',
       'マカロニ', 'ペンネ', 'リングイネ', 'フェットチーネ', 'ポポロスパ',
-      'spaghetti', 'pasta',
+      'spaghetti', 'pasta', 'ミートソース', 'パスタソース', 'スパゲッティソース',
+      'スパゲティソース', 'トマトソース', 'バジルソース', 'たらこソース',
+      '明太子ソース', 'ボロネーゼ', 'カルボナーラ', 'ジェノベーゼ',
+      'ペペロンチーノ', 'ナポリタン', 'アラビアータ', 'ペスカトーレ',
     ],
-    excludes: ['パスタソース', 'スパゲッティソース', 'スパゲティソース', 'ミートソース'],
+    excludes: [],
   },
   {
     label: '春雨類',
@@ -155,4 +158,10 @@ export function createInventorySearchMatcher(query: string, reading = ''): (item
     const text = normalizeSearchText([item.name, item.barcode, item.brand, item.storeName].join(' '));
     return keywords.some((keyword) => text.includes(keyword));
   };
+}
+
+export function shouldUseSemanticSearch(query: string, items: readonly SearchableItem[], reading = ''): boolean {
+  if (!query.trim() || !items.length || /^\d+$/u.test(query)) return false;
+  const matchesText = createInventorySearchMatcher(query, reading);
+  return !items.some(matchesText);
 }

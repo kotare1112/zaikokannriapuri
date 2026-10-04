@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel } from '../src/app/core/inventory-search.ts';
+import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel, shouldUseSemanticSearch } from '../src/app/core/inventory-search.ts';
 
 const item = (name, barcode = '4901234567890', brand = '') => ({ name, barcode, brand, storeName: '' });
 
@@ -34,12 +34,24 @@ test('スパゲッティとパスタなど別の呼び方でも同じ種類を�
   assert.equal(spaghetti(item('ポポロスパ7 1.6mm 500g')), true);
   assert.equal(spaghetti(item('ペンネ 200g')), true);
   assert.equal(spaghetti(item('ラーメン')), false);
-  assert.equal(spaghetti(item('パスタソース')), false);
+  assert.equal(spaghetti(item('パスタソース')), true);
+  assert.equal(spaghetti(item('ミートソース')), true);
+  assert.equal(spaghetti(item('カルボナーラソース')), true);
+  assert.equal(spaghetti(item('コーラ')), false);
   assert.equal(createInventorySearchMatcher('パスタ')(item('スパゲティ 500g')), true);
+  assert.equal(createInventorySearchMatcher('パスタ')(item('ミートソース')), true);
   assert.equal(createInventorySearchMatcher('春雨')(item('マロニー 100g')), true);
   assert.equal(createInventorySearchMatcher('炭酸飲料')(item('コーラ 500ml')), true);
   assert.equal(createInventorySearchMatcher('漂白剤')(item('ワイドハイター 500ml')), true);
-  assert.equal(isSearchGenreExcluded('スパゲッティ', item('パスタソース')), true);
+  assert.equal(isSearchGenreExcluded('スパゲッティ', item('パスタソース')), false);
+});
+
+test('確実な結果がある検索はAI候補を混ぜず、未知の表現だけAIに回す', () => {
+  const items = [item('ポポロスパ7'), item('ミートソース'), item('コーラ')];
+  assert.equal(shouldUseSemanticSearch('パスタ', items), false);
+  assert.equal(shouldUseSemanticSearch('スパゲッティ', items), false);
+  assert.equal(shouldUseSemanticSearch('夕食の主食', items), true);
+  assert.equal(shouldUseSemanticSearch('4901234567890', items), false);
 });
 
 test('洗剤から漂白剤や製品ブランドも見つけ、容器などの雑貨は除く', () => {

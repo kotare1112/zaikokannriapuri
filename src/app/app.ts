@@ -10,7 +10,7 @@ import {
 } from './core/access-control.service';
 import { AuthService } from './core/auth.service';
 import { InventoryRepository } from './core/inventory.repository';
-import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel } from './core/inventory-search';
+import { createInventorySearchMatcher, isSearchGenreExcluded, searchGenreLabel, shouldUseSemanticSearch } from './core/inventory-search';
 import { YahooShoppingService } from './core/yahoo-shopping.service';
 import { BarcodeScannerComponent } from './features/barcode-scanner/barcode-scanner';
 import { InventoryItem, ProductDetails } from './models/inventory-item';
@@ -94,13 +94,15 @@ export class App implements OnDestroy {
     this.resetSignedOutSession();
   });
   protected readonly search = signal('');
+  private readonly searchSubmission = signal(0);
   protected readonly searchReading = signal('');
   protected readonly activeSearchGenre = computed(() => searchGenreLabel(this.search()));
   protected readonly isReadingSearchLoading = signal(false);
   protected readonly semanticSearchState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
   protected readonly semanticMatches = signal<ReadonlySet<string>>(new Set());
   private readonly semanticSearchEffect = effect(() => {
-    this.updateSemanticSearch(this.search(), this.items());
+    this.searchSubmission();
+    this.updateSemanticSearch(this.search(), this.items(), this.searchReading());
   });
   protected searchInput = '';
   protected readonly sortField = signal<SortField>('updatedAt');
@@ -162,6 +164,7 @@ export class App implements OnDestroy {
     this.semanticMatches.set(new Set());
     this.search.set(query);
     this.searchReading.set('');
+    this.searchSubmission.update((count) => count + 1);
     this.isReadingSearchLoading.set(false);
     if (!/\p{Script=Han}/u.test(query) || searchGenreLabel(query)) return;
     const cachedReading = this.readingCache.get(query);
@@ -195,10 +198,10 @@ export class App implements OnDestroy {
     this.semanticSearchState.set('idle');
   }
 
-  private updateSemanticSearch(query: string, items: InventoryItem[]): void {
+  private updateSemanticSearch(query: string, items: InventoryItem[], reading: string): void {
     const requestId = ++this.semanticRequestId;
     this.semanticMatches.set(new Set());
-    if (!query || !items.length || /^\d+$/u.test(query)) {
+    if (!shouldUseSemanticSearch(query, items, reading)) {
       this.semanticSearchState.set('idle');
       return;
     }
